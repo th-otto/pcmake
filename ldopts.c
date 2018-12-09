@@ -138,7 +138,7 @@ void init_ldflags(LD_FLAGS *flg)
 
 void free_ldflags(LD_FLAGS *flg)
 {
-	free(flg->output_filename);
+	g_free(flg->output_filename);
 	flg->output_filename = NULL;
 }
 
@@ -205,8 +205,8 @@ static bool parse_ldflags(int argc, const char **argv, LD_FLAGS *flg, int *popti
 			flg->imgsize = hexval(xgetopt_arg_r(opts));
 			break;
 		case 'o':						/* object file name */
-			free(flg->output_filename);
-			flg->output_filename = strdup(xgetopt_arg_r(opts));
+			g_free(flg->output_filename);
+			flg->output_filename = g_strdup(xgetopt_arg_r(opts));
 			break;
 		case 's':
 		case 'S':

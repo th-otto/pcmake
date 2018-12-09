@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include "list.h"
 #include "warnings.h"
+#include "memdebug.h"
 
 #define MAX_PATHLEN 256
 
@@ -149,7 +150,6 @@ void doincl(C_FLAGS *flg, const char *str);
 void errout_va(const char *format, va_list args) __attribute__((format(printf, 1, 0)));
 void errout(const char *format, ...) __attribute__((format(printf, 1, 2)));
 void oom(size_t size) __attribute__((noreturn));
-char *strndup(const char *str, size_t len);
 void strfreev(char **argv);
 char **split_args(const char *argv0, const char *argstring, int *pargc, char delim);
 
@@ -186,5 +186,6 @@ void set_pcdir(const char *argv0);
 const char *get_pcdir(void);
 const char *get_libdir(void);
 const char *get_includedir(void);
+void exec_exit(void);
 int linker(int argc, const char **argv);
-int compiler(bool need_ahcc, int argc, const char **argv);
+int compiler(int argc, const char **argv);

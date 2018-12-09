@@ -226,7 +226,7 @@ void doincl(C_FLAGS *cflags, const char *s)				/* optincl */
 	char *pt;
 	char *dir;
 
-	buf = malloc(strlen(s) + 2);
+	buf = g_new(char, strlen(s) + 2);
 	if (buf == NULL)
 		return;
 	strcpy(buf, s);
@@ -260,12 +260,12 @@ void doincl(C_FLAGS *cflags, const char *s)				/* optincl */
 		{
 			list_append(&cflags->includes, dir);
 		}
-		free(dir);
+		g_free(dir);
 		
 		while (*pt != 0)
 			pt++;
 	}
-	free(buf);
+	g_free(buf);
 }
 
 
@@ -583,13 +583,13 @@ static bool parse_cflags(int argc, const char **argv, C_FLAGS *flg, int *poptind
 			break;
 		case 'n':
 		case 'N':
-			free(flg->output_directory);
-			flg->output_directory = strdup(xgetopt_arg_r(opts));
+			g_free(flg->output_directory);
+			flg->output_directory = g_strdup(xgetopt_arg_r(opts));
 			break;
 		case 'o':
 		case 'O':
-			free(flg->output_name);
-			flg->output_name = strdup(xgetopt_arg_r(opts));
+			g_free(flg->output_name);
+			flg->output_name = g_strdup(xgetopt_arg_r(opts));
 			break;
 		case 'S' + 256:
 			flg->frame_pointer = false;
@@ -643,11 +643,11 @@ C_FLAGS *copy_cflags(const C_FLAGS *src)
 {
 	C_FLAGS *dst;
 	
-	dst = (C_FLAGS *)malloc(sizeof(*dst));
+	dst = g_new(C_FLAGS, 1);
 	if (dst != NULL)
 	{
 		*dst = *src;
-		dst->output_directory = strdup(src->output_directory);
+		dst->output_directory = g_strdup(src->output_directory);
 		dst->output_name = NULL;
 		dst->defines = list_copy(src->defines);
 		dst->undefines = list_copy(src->undefines);

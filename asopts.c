@@ -190,13 +190,13 @@ static bool parse_asflags(int argc, const char **argv, C_FLAGS *flg, int *poptin
 			break;
 		case 'n':
 		case 'N':
-			free(flg->output_directory);
-			flg->output_directory = strdup(xgetopt_arg_r(opts));
+			g_free(flg->output_directory);
+			flg->output_directory = g_strdup(xgetopt_arg_r(opts));
 			break;
 		case 'o':
 		case 'O':
-			free(flg->output_name);
-			flg->output_name = strdup(xgetopt_arg_r(opts));
+			g_free(flg->output_name);
+			flg->output_name = g_strdup(xgetopt_arg_r(opts));
 			break;
 		case 'v':
 			flg->verbose += 1;		/* number of v's = level of verbosity */

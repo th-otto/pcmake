@@ -8,7 +8,7 @@
 
 void list_append(strlist **list, const char *str)
 {
-	strlist *entry = (strlist *)malloc(sizeof(*entry) + strlen(str));
+	strlist *entry = (strlist *)g_malloc(sizeof(*entry) + strlen(str));
 	
 	if (entry != NULL)
 	{
@@ -44,7 +44,7 @@ void list_free(strlist **list)
 	for (entry = *list; entry != NULL; entry = next)
 	{
 		next = entry->next;
-		free(entry);
+		g_free(entry);
 	}
 	*list = NULL;
 }

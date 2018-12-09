@@ -3,7 +3,7 @@ c:\pc\pcmake.ttp
 .C [-2- -8-]
 
 .C [-A- -H- -K-]
-.C [-C- -M -P-]
+.C [-C- -M -P- -G]
 .L [-S=32768]
 =
 cstartv.o
@@ -19,6 +19,8 @@ ldopts.c
 list.c
 utils.c
 getopt.c
+
+malloc.c
 
 pcstdlib.lib		; standard library
 pctoslib.lib		; TOS library

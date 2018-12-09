@@ -117,7 +117,7 @@ static char *parse_filename(char **ln)
 	}
 	*ln = p;
 	len = p - s;
-	str = malloc(len + 1);
+	str = g_new(char, len + 1);
 	if (str != NULL)
 	{
 		memcpy(str, s, len);
@@ -148,7 +148,7 @@ static filearg *putflist(filearg **list, const char *f, FTY type)
 	
 	if (!inlist(*list, f))
 	{
-		entry = malloc(sizeof(*entry) + strlen(f));
+		entry = (filearg *)g_malloc(sizeof(*entry) + strlen(f));
 		if (entry)
 		{
 			strcpy(entry->name, f);
@@ -186,13 +186,13 @@ static filearg *keepfile(PRJ *prj, const char *f)
 		{
 			char *ps;
 	
-			ps = malloc(strlen(f) + 3);
+			ps = g_new(char, strlen(f) + 3);
 			if (ps)
 			{
 				strcpy(ps, f);
 				strcat(ps, ".c");
 				entry = putflist(&prj->inputs, ps, ftype);
-				free(ps);
+				g_free(ps);
 			}
 		}
 		break;
@@ -244,7 +244,7 @@ static void default_output_file(PRJ *prj)
 			prj->output = change_suffix(ft->name, suff_prg);
 		} else
 		{
-			prj->output = strdup("a.prg");
+			prj->output = g_strdup("a.prg");
 		}
 		prj->output_type = filetype(prj->output);
 	}
@@ -266,7 +266,7 @@ static void clear_project(PRJ *prj, int level)
 			case FT_CSOURCE:
 			case FT_ASSOURCE:
 				free_cflags(ft->u.cflags);
-				free(ft->u.cflags);
+				g_free(ft->u.cflags);
 				break;
 			case FT_PROJECT:
 				clear_project(ft->u.prj, level + 1);
@@ -275,16 +275,16 @@ static void clear_project(PRJ *prj, int level)
 				break;
 			}
 			list_free(&ft->dependencies);
-			free(ft);
+			g_free(ft);
 		}
-		free(prj->output);
-		free(prj->filename);
-		free(prj->directory);
+		g_free(prj->output);
+		g_free(prj->filename);
+		g_free(prj->directory);
 		
 		free_cflags(&prj->c_flags);
 		free_ldflags(&prj->ld_flags);
 		
-		free(prj);
+		g_free(prj);
 	}
 }
 
@@ -316,12 +316,12 @@ static char *objname_for_src(PRJ *prj, filearg *ft)
 	{
 		tmp = build_path(prj->c_flags.output_directory, basename(ft->name));
 		objname = change_suffix(tmp, suff_o);
-		free(tmp);
+		g_free(tmp);
 	} else
 	{
 		tmp = build_path(prj->directory, ft->name);
 		objname = change_suffix(tmp, suff_o);
-		free(tmp);
+		g_free(tmp);
 	}
 	return objname;
 }
@@ -349,9 +349,9 @@ static void touch(PRJ *prj, filearg *ft)
 			Fdatime(&t, h, 1);			/* touch .o (datime --> 80-1-1) */
 			Fclose(h);
 		}
-		free(o);
+		g_free(o);
 	}
-	free(name);
+	g_free(name);
 }
 
 
@@ -361,18 +361,25 @@ static int makeok(PRJ *prj, filearg *ft, const char *objname, int lvl)
 	DOSTIME obj_timestamp, src_timestamp;
 	strlist *dep;
 	char *f;
+	char *srcname;
 	
 	fh = (int)Fopen(objname, FO_READ);
 	if (fh <= 0)
+	{
+		if (verbose > 1)
+			fprintf(stdout, _("compiling %s because %s is missing\n"), ft->name, objname);
 		return 1;						/* .o absent, must compile */
-
+	}
 	Fdatime(&obj_timestamp, fh, 0);				/* object (target) */
 	Fclose(fh);
-	fh = (int)Fopen(ft->name, FO_READ);
+
+	srcname = build_path(prj->directory, ft->name);
+	fh = (int)Fopen(srcname, FO_READ);
 	if (fh <= 0)
 	{
-		errout(_("%d>%s: Can't open %s\n"), lvl, program_name, ft->name);
-		return 0;
+		errout(_("%d>%s: Can't open %s\n"), lvl, program_name, srcname);
+		g_free(srcname);
+		return -1;
 	}
 
 	Fdatime(&src_timestamp, fh, 0);
@@ -380,6 +387,7 @@ static int makeok(PRJ *prj, filearg *ft, const char *objname, int lvl)
 	
 	if (older(&src_timestamp, &obj_timestamp))
 	{
+		g_free(srcname);
 		/* src older than object; check dependencies */
 		for (dep = ft->dependencies; dep; dep = dep->next)
 		{
@@ -388,17 +396,25 @@ static int makeok(PRJ *prj, filearg *ft, const char *objname, int lvl)
 			if (fh <= 0)
 			{
 				errout(_("%d>%s: Can't open %s\n"), lvl, program_name, f);
-				free(f);
+				g_free(f);
 				return -1;
 			}
-			free(f);
 			Fdatime(&src_timestamp, fh, 0);
 			Fclose(fh);
 			if (older(&obj_timestamp, &src_timestamp))
+			{
+				if (verbose > 1)
+					fprintf(stdout, _("compiling %s because %s is newer than %s\n"), ft->name, f, objname);
+				g_free(f);
 				return 1;
+			}
+			g_free(f);
 		}
 		return 0;
 	}
+	if (verbose > 1)
+		fprintf(stdout, _("compiling %s because %s is newer than %s\n"), ft->name, srcname, objname);
+	g_free(srcname);
 	return 1;		/* we must compile */
 }
 
@@ -406,12 +422,24 @@ static int makeok(PRJ *prj, filearg *ft, const char *objname, int lvl)
 
 static void add_arg(int *argc, char ***argv, const char *arg)
 {
-	*argv = realloc(*argv, (*argc + 2) * sizeof(char *));
+	*argv = g_realloc(*argv, (*argc + 2) * sizeof(char *));
 	if (*argv == NULL)
 		return;
-	(*argv)[*argc] = strdup(arg);
+	(*argv)[*argc] = g_strdup(arg);
 	++(*argc);
 	(*argv)[*argc] = NULL;
+}
+
+
+static void add_optarg(int *argc, char ***argv, const char *sw, const char *arg)
+{
+	char *str = g_new(char, strlen(sw) + strlen(arg) + 1);
+	if (str)
+	{
+		strcat(strcpy(str, sw), arg);
+		add_arg(argc, argv, str);
+		g_free(str);
+	}
 }
 
 
@@ -422,20 +450,17 @@ static void prj_params(const C_FLAGS *cflags, int *argc, char ***argv)
 	
 	for (str = cflags->defines; str != NULL; str = str->next)
 	{
-		add_arg(argc, argv, "-D");
-		add_arg(argc, argv, str->str);
+		add_optarg(argc, argv, "-D", str->str);
 	}
 
 	for (str = cflags->undefines; str != NULL; str = str->next)
 	{
-		add_arg(argc, argv, "-U");
-		add_arg(argc, argv, str->str);
+		add_optarg(argc, argv, "-U", str->str);
 	}
 
 	for (str = cflags->includes; str != NULL; str = str->next)
 	{
-		add_arg(argc, argv, "-I");
-		add_arg(argc, argv, str->str);
+		add_optarg(argc, argv, "-I", str->str);
 	}
 }
 
@@ -451,14 +476,21 @@ static int docomp(PRJ *prj, filearg *ft)
 	char **argv;
 	char buf[32];
 	const C_FLAGS *cflags = ft->u.cflags;
-	bool need_ahcc;
 	bool is_asm = ft->filetype == FT_ASSOURCE;
 	char *srcname;
 	char *output_name;
+	const char *compiler_name;
 	
 	argc = 0;
 	argv = NULL;
-	add_arg(&argc, &argv, is_asm ? "as" : "cc");
+	if (is_asm)
+	{
+		compiler_name = cflags->Coldfire ? "ahcc.ttp" : "pasm.ttp";
+	} else
+	{
+		compiler_name = cflags->Coldfire || cflags->default_int32 ? "ahcc.ttp" : "pcc.ttp";
+	}
+	add_arg(&argc, &argv, compiler_name);
 
 	/* many levels of verbosity */
 	if (cflags->verbose > 0)
@@ -483,16 +515,16 @@ static int docomp(PRJ *prj, filearg *ft)
 			add_arg(&argc, &argv, "-C");	/* nested comments */
 		if (cflags->max_errors >= 0)
 		{
-			add_arg(&argc, &argv, "-E");
-			sprintf(buf, "%d", cflags->max_errors);
+			sprintf(buf, "-E%d", cflags->max_errors);
 			add_arg(&argc, &argv, buf);
 		}
 		if (cflags->max_warnings >= 0)
 		{
-			add_arg(&argc, &argv, "-F");
-			sprintf(buf, "%d", cflags->max_warnings);
+			sprintf(buf, "-F%d", cflags->max_warnings);
 			add_arg(&argc, &argv, buf);
 		}
+		if (cflags->optimize_size)
+			add_arg(&argc, &argv, "-G");
 		if (cflags->cdecl_calling)
 			add_arg(&argc, &argv, "-H");					/* cdecl calling */
 		if (cflags->no_jump_optimization)
@@ -501,8 +533,7 @@ static int docomp(PRJ *prj, filearg *ft)
 			add_arg(&argc, &argv, "-K");					/* default char is unsigned */
 		if (cflags->identifier_max_length >= 0)
 		{
-			add_arg(&argc, &argv, "-L");
-			sprintf(buf, "%d", cflags->identifier_max_length);
+			sprintf(buf, "-L%d", cflags->identifier_max_length);
 			add_arg(&argc, &argv, buf);
 		}
 		if (cflags->string_merging)
@@ -526,7 +557,11 @@ static int docomp(PRJ *prj, filearg *ft)
 		if (cflags->default_int32)
 			add_arg(&argc, &argv, "--mno-short");					/* default int is 32 bits */
 	}
-	if (cflags->i2_68020)
+	if (!is_asm && cflags->Coldfire && cflags->i2_68020)
+		add_arg(&argc, &argv, "-27");
+	else if (cflags->Coldfire)
+		add_arg(&argc, &argv, "-7");
+	if (cflags->i2_68020 && !cflags->Coldfire)
 		add_arg(&argc, &argv, "-2");	/* >= 68020 */
 	if (cflags->i2_68030)
 		add_arg(&argc, &argv, "-3");	/* 68030 */
@@ -538,8 +573,6 @@ static int docomp(PRJ *prj, filearg *ft)
 		add_arg(&argc, &argv, "-6");	/* 68060 */
 	if (cflags->use_FPU)
 		add_arg(&argc, &argv, "-8");	/* FPU */
-	if (cflags->Coldfire)
-		add_arg(&argc, &argv, "-7");	/* double is 64 bits */
 	if (cflags->debug_infos)
 		add_arg(&argc, &argv, "-Y");
 	if (cflags->no_output)
@@ -550,13 +583,14 @@ static int docomp(PRJ *prj, filearg *ft)
 #if 0
 	if (cflags->output_directory != NULL && cflags->output_directory[0] != '\0')
 	{
-		add_arg(&argc, &argv, "-N");
-		add_arg(&argc, &argv, cflags->output_directory);
+		add_optarg(&argc, &argv, "-N", cflags->output_directory);
 	}
 #endif
 
 	prj_params(cflags, &argc, &argv);
-
+	if (!is_asm)
+		add_optarg(&argc, &argv, "-I", get_includedir());
+	
 	if (cflags->output_name)
 	{
 		output_name = build_path(prj->directory, cflags->output_name);
@@ -565,45 +599,30 @@ static int docomp(PRJ *prj, filearg *ft)
 		output_name = objname_for_src(prj, ft);
 	}
 	
-	add_arg(&argc, &argv, "-O");
-	add_arg(&argc, &argv, output_name);
+	add_optarg(&argc, &argv, "-O", output_name);
 
 	add_arg(&argc, &argv, srcname);
 	
-	if (verbose > 0)
 	{
 		int i;
 
-		fprintf(stdout, _("\n****  Compiling %s\n"), srcname);
+		if (verbose > 0)
+			fprintf(stdout, _("\n****  Compiling %s\n"), srcname);
 		fprintf(stdout, "%s", argv[0]);
 		for (i = 1; i < argc; i++)
 			fprintf(stdout, " %s", argv[i]);
 		fprintf(stdout, "\n");
 	}
-	free(output_name);
-	free(srcname);
-	
-	need_ahcc = cflags->Coldfire || cflags->default_int32;
-	
-	if ((warn = compiler(need_ahcc, argc, (const char **)argv)) > 0)
+	g_free(output_name);
+
+	if ((warn = compiler(argc, (const char **)argv)) != 0)
 	{
 #if 0
-		if (o)
-		{
-			Fdelete(o);
-		} else
-		{
-			P_path pn;
-
-			pn.s = f;
-			S_path sf;
-
-			sf = change_suffix(pn.t, sufs.s);
-			Fdelete(sf.s);
-		}
+		Fdelete(output_name);
 #endif
 	}
-
+	
+	g_free(srcname);
 	strfreev(argv);
 	
 	if (warn == 0)
@@ -627,6 +646,7 @@ static char *look_CC(PRJ *prj, filearg *ft, const char *msg)
 		found = true;
 	} else if ((ft->filetype == FT_OBJECT && ft == prj->inputs) || ft->filetype == FT_LIBRARY)
 	{
+		g_free(name);
 		name = build_path(get_libdir(), ft->name);
 		found = file_exists(name);
 	} else
@@ -636,7 +656,7 @@ static char *look_CC(PRJ *prj, filearg *ft, const char *msg)
 	if (!found)
 	{
 		errout(_("can't find %s '%s'\n"), msg, ft->name);
-		free(name);
+		g_free(name);
 		name = NULL;
 	}
 
@@ -665,8 +685,8 @@ static bool dold(PRJ *prj)
 	default_output_file(prj);
 
 	argc = 0;
-	argv = malloc(sizeof(char *));
-	add_arg(&argc, &argv, "ld");
+	argv = g_new(char *, 1);
+	add_arg(&argc, &argv, "plink.ttp");
 	if (prj->ld_flags.verbose > 0)
 		add_arg(&argc, &argv, "-V");
 	if (prj->ld_flags.verbose > 1)
@@ -722,8 +742,7 @@ static bool dold(PRJ *prj)
 		add_arg(&argc, &argv, "--symbol-list");
 	if (prj->ld_flags.load_map)
 		add_arg(&argc, &argv, "--map");
-	add_arg(&argc, &argv, "-O");
-	add_arg(&argc, &argv, prj->output);
+	add_optarg(&argc, &argv, "-O=", prj->output);
 		
 	if (prj->inputs)
 	{
@@ -736,12 +755,12 @@ static bool dold(PRJ *prj)
 			case FT_CSOURCE:
 				name = objname_for_src(prj, ft);
 				add_arg(&argc, &argv, name);
-				free(name);
+				g_free(name);
 				break;
 			case FT_ASSOURCE:
 				name = objname_for_src(prj, ft);
 				add_arg(&argc, &argv, name);
-				free(name);
+				g_free(name);
 				break;
 			case FT_OBJECT:
 				if ((name = look_CC(prj, ft, _("start up"))) == NULL)
@@ -751,7 +770,7 @@ static bool dold(PRJ *prj)
 				{
 					add_arg(&argc, &argv, name);
 				}
-				free(name);
+				g_free(name);
 				break;
 			case FT_LIBRARY:
 				if ((name = look_CC(prj, ft, _("library"))) == NULL)
@@ -761,7 +780,7 @@ static bool dold(PRJ *prj)
 				{
 					add_arg(&argc, &argv, name);
 				}
-				free(name);
+				g_free(name);
 				break;
 			default:
 				break;
@@ -777,7 +796,8 @@ static bool dold(PRJ *prj)
 		{
 			int i;
 			
-			fprintf(stdout, _("\n****  Linking %s\n"), prj->filename);
+			if (verbose > 0)
+				fprintf(stdout, _("\n****  Linking %s\n"), prj->filename);
 			fprintf(stdout, "%s", argv[0]);
 			for (i = 1; i < argc; i++)
 				fprintf(stdout, " %s", argv[i]);
@@ -817,7 +837,7 @@ static int make_prj(PRJ *prj, bool ignore_date, int level)
 				r = 1;
 			else
 				r = makeok(prj, ft, of, level);	/* recursive check timestamp */
-			free(of);
+			g_free(of);
 			if (r < 0)
 				return r;
 			
@@ -825,7 +845,7 @@ static int make_prj(PRJ *prj, bool ignore_date, int level)
 
 			if (r == 1)
 			{
-				if (docomp(prj, ft) > 0)
+				if (docomp(prj, ft) != 0)
 					return -1;		/* errors */
 			}
 		} else if (ft->filetype == FT_PROJECT)
@@ -836,8 +856,6 @@ static int make_prj(PRJ *prj, bool ignore_date, int level)
 				return -r;					/* errors */
 			anycomp += r;
 		}
-
-		ft = ft->next;
 	}
 
 	if (anycomp == 0)
@@ -886,10 +904,10 @@ static int make_prj(PRJ *prj, bool ignore_date, int level)
 					if (fh <= 0)
 					{
 						errout(_("%d>%s: Can't open %s\n"), level, program_name, name);
-						free(name);
+						g_free(name);
 						return -1;
 					}
-					free(name);
+					g_free(name);
 					Fdatime(&src_timestamp, fh, 0);
 					Fclose(fh);
 					if (older(&prg_timestamp, &src_timestamp))
@@ -1011,7 +1029,7 @@ static char *add_options(char **fro)
 	while (*p && *p != '\r' && *p != '\n' && *p != ']')
 		p++;
 
-	to = strndup(s, p - s);
+	to = g_strndup(s, p - s);
 	if (*p == ']')
 		*p++ = 0;
 	*fro = p;
@@ -1037,7 +1055,7 @@ static PRJ *load_prj(const char *f, int level)
 		return NULL;
 	}
 
-	prj = (PRJ *)malloc(sizeof(*prj));
+	prj = g_new(PRJ, 1);
 	if (prj == NULL)
 	{
 		fclose(fp);
@@ -1046,7 +1064,7 @@ static PRJ *load_prj(const char *f, int level)
 	init_cflags(&prj->c_flags);
 	init_ldflags(&prj->ld_flags);
 
-	prj->filename = strdup(f);
+	prj->filename = g_strdup(f);
 	prj->directory = dirname(f);
 	prj->inputs = NULL;
 	prj->output = NULL;
@@ -1089,7 +1107,7 @@ static PRJ *load_prj(const char *f, int level)
 						result = false;
 					else
 						result = parse_cc_options(lopt, &prj->c_flags);
-					free(lopt);
+					g_free(lopt);
 				} else if (c == 'S' || c == 's')
 				{
 					char *lopt;
@@ -1100,7 +1118,7 @@ static PRJ *load_prj(const char *f, int level)
 						result = false;
 					else
 						result = parse_as_options(lopt, &prj->c_flags);
-					free(lopt);
+					g_free(lopt);
 				} else if (c == 'L' || c == 'l')
 				{
 					char *lopt;
@@ -1111,7 +1129,7 @@ static PRJ *load_prj(const char *f, int level)
 						result = false;
 					else
 						result = parse_ld_options(lopt, &prj->ld_flags);
-					free(lopt);
+					g_free(lopt);
 				} else
 				{
 					result = false;
@@ -1141,7 +1159,7 @@ static PRJ *load_prj(const char *f, int level)
 				skipwhite(&s);
 				fnm = parse_filename(&s);
 				ps = build_path(prj->directory, fnm);
-				free(fnm);
+				g_free(fnm);
 				
 				if (firstfile)
 				{
@@ -1151,7 +1169,7 @@ static PRJ *load_prj(const char *f, int level)
 						if (prj->output)
 						{
 							errout(_("%s: duplicate output file '%s'\n"), program_name, ps);
-							free(ps);
+							g_free(ps);
 							return FT_UNKNOWN;
 						}
 						/* TODO: replace "*.PRG" in filename with editor filename, for DEFAULT.PRJ */
@@ -1168,10 +1186,10 @@ static PRJ *load_prj(const char *f, int level)
 				{
 					errout(_("%d>%s: %s:%ld: unknown file suffix '%s'\n"), level, Error, f, lineno, ps);
 					retval = false;
-					free(ps);
+					g_free(ps);
 				} else
 				{
-					free(ps);
+					g_free(ps);
 					if (keep->filetype != FT_NONE)
 					{
 						if (skipwhite(&s) == '(')	/* has dependencies */
@@ -1185,9 +1203,9 @@ static PRJ *load_prj(const char *f, int level)
 								{
 									ps = build_path(prj->directory, fnm);
 									list_append(&keep->dependencies, ps);
-									free(ps);
+									g_free(ps);
 								}
-								free(fnm);
+								g_free(fnm);
 								if (skipwhite(&s) != ',')
 									break;
 							}
@@ -1220,7 +1238,7 @@ static PRJ *load_prj(const char *f, int level)
 								errout(_("%s: %s:%ld: Illegal option specification: %s\n"), Error, f, lineno, opt);
 								retval = false;
 							}
-							free(opt);
+							g_free(opt);
 						}
 						
 						/* nested project */
@@ -1228,7 +1246,7 @@ static PRJ *load_prj(const char *f, int level)
 						{
 							char *name = build_path(prj->directory, keep->name);
 							keep->u.prj = load_prj(name, level + 1);
-							free(name);
+							g_free(name);
 							if (keep->u.prj == NULL)
 								retval = false;
 						}

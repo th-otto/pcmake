@@ -49,13 +49,13 @@ void oom(size_t size)
 
 /* ---------------------------------------------------------------------- */
 
-char *strndup(const char *str, size_t len)
+char *g_strndup(const char *str, size_t len)
 {
 	char *p;
 
 	if (str == NULL)
 		return NULL;
-	if ((p = malloc(len + 1)) != NULL)
+	if ((p = g_new(char, len + 1)) != NULL)
 	{
 		memcpy(p, str, len);
 		p[len] = '\0';
@@ -67,7 +67,8 @@ char *strndup(const char *str, size_t len)
 
 /* ---------------------------------------------------------------------- */
 
-char *strdup(const char *str)
+#if DEBUG_ALLOC < 2
+char *g_strdup(const char *str)
 {
 	char *p;
 	size_t len;
@@ -75,7 +76,7 @@ char *strdup(const char *str)
 	if (str == NULL)
 		return NULL;
 	len = strlen(str) + 1;
-	if ((p = malloc(len)) != NULL)
+	if ((p = g_new(char, len)) != NULL)
 	{
 		strcpy(p, str);
 		return p;
@@ -83,6 +84,7 @@ char *strdup(const char *str)
 	oom(len);
 	return NULL;
 }
+#endif
 
 /* ---------------------------------------------------------------------- */
 
@@ -93,8 +95,8 @@ void strfreev(char **argv)
 	if (argv != NULL)
 	{
 		for (i = 0; argv[i] != NULL; i++)
-			free(argv[i]);
-		free(argv);
+			g_free(argv[i]);
+		g_free(argv);
 	}
 }
 
@@ -130,17 +132,17 @@ char **split_args(const char *argv0, const char *argstring, int *pargc, char del
 	}
 	if (s != current)
 		argc++;
-	argv = malloc(sizeof(char *) * (argc + 1));
+	argv = g_new(char *, argc + 1);
 
 	argc = 0;
 	if (argv0 != NULL)
-		argv[argc++] = strdup(argv0);
+		argv[argc++] = g_strdup(argv0);
 	s = current = argstring;
 	while (*s != '\0')
 	{
 		if (isdelim(*s))
 		{
-			argv[argc++] = strndup(current, s - current);
+			argv[argc++] = g_strndup(current, s - current);
 			while (isdelim(*s))
 				s++;
 			current = s;
@@ -150,7 +152,7 @@ char **split_args(const char *argv0, const char *argstring, int *pargc, char del
 		}
 	}
 	if (s != current)
-		argv[argc++] = strndup(current, s - current);
+		argv[argc++] = g_strndup(current, s - current);
 	argv[argc] = NULL;
 #undef isdelim
 
@@ -279,10 +281,10 @@ char *build_path(const char *dir, const char *fname)
 	char *name;
 	
 	if (fname && is_absolute_path(fname))
-		return strdup(fname);
+		return g_strdup(fname);
 	dirlen = strlen(dir);
 	fnamelen = fname ? strlen(fname) : 0;
-	name = (char *)malloc(dirlen + 1 + fnamelen + 1);
+	name = g_new(char, dirlen + 1 + fnamelen + 1);
 	if (name != NULL)
 	{
 		strcpy(name, dir);
@@ -302,7 +304,7 @@ char *change_suffix(const char *filename, const char *ext)
 	char *dot;
 	char *name;
 	
-	name = malloc(strlen(filename) + strlen(ext) + 1);
+	name = g_new(char, strlen(filename) + strlen(ext) + 1);
 	if (name)
 	{
 		strcpy(name, filename);
@@ -334,7 +336,7 @@ char *dirname(const char *f)
 {
 	char *t, *m;
 
-	m = strdup(f);
+	m = g_strdup(f);
 	t = strrslash(m);
 	if (t)
 	{

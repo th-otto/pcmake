@@ -135,8 +135,15 @@ int main(int argc, const char **argv)
 				if (!domake(prj, false))
 					err = EXIT_FAILURE;
 			}
+			free_project(prj);
 		}
 	}
-	
+
+	exec_exit();
+		
+#if DEBUG_ALLOC
+	_crtexit();
+#endif
+
 	return err;
 }
