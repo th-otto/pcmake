@@ -792,7 +792,6 @@ static bool dold(PRJ *prj)
 	
 	if (rep == 0)
 	{
-		if (verbose > 0)
 		{
 			int i;
 			
@@ -1159,7 +1158,6 @@ static PRJ *load_prj(const char *f, int level)
 				skipwhite(&s);
 				fnm = parse_filename(&s);
 				ps = build_path(prj->directory, fnm);
-				g_free(fnm);
 				
 				if (firstfile)
 				{
@@ -1177,11 +1175,13 @@ static PRJ *load_prj(const char *f, int level)
 						prj->output_type = filetype(prj->output);
 						if (prj->output_type == FT_NONE)
 							prj->output_type = FT_PROGRAM;
+						g_free(fnm);
 						continue;
 					}
 				}
 				
-				keep = keepfile(prj, ps);
+				keep = keepfile(prj, fnm);
+				g_free(fnm);
 				if (keep == NULL || keep->filetype == FT_UNKNOWN)
 				{
 					errout(_("%d>%s: %s:%ld: unknown file suffix '%s'\n"), level, Error, f, lineno, ps);

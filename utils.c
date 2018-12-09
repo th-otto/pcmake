@@ -49,6 +49,7 @@ void oom(size_t size)
 
 /* ---------------------------------------------------------------------- */
 
+#if DEBUG_ALLOC < 2
 char *g_strndup(const char *str, size_t len)
 {
 	char *p;
@@ -67,7 +68,6 @@ char *g_strndup(const char *str, size_t len)
 
 /* ---------------------------------------------------------------------- */
 
-#if DEBUG_ALLOC < 2
 char *g_strdup(const char *str)
 {
 	char *p;

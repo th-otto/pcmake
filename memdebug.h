@@ -50,6 +50,7 @@ char *g_strndup(const char *, size_t len);
 #define malloc(n) dbg_malloc(n, __FILE__, __LINE__)
 #define calloc(n, s) dbg_calloc(n, s, __FILE__, __LINE__)
 #define g_strdup(s) dbg_strdup(s, __FILE__, __LINE__)
+#define g_strndup(s, n) dbg_strndup(s, n, __FILE__, __LINE__)
 #endif
 #if DEBUG_ALLOC >= 1
 #define free(p) dbg_free(p, __FILE__, __LINE__)
