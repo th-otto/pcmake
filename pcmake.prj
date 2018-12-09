@@ -1,0 +1,24 @@
+c:\pc\pcmake.ttp
+
+.C [-2- -8-]
+
+.C [-A- -H- -K-]
+.C [-C- -M -P-]
+.L [-S=32768]
+=
+cstartv.o
+
+pcmake.c
+exec.c
+
+prj.c
+asopts.c
+ccopts.c
+ldopts.c
+
+list.c
+utils.c
+getopt.c
+
+pcstdlib.lib		; standard library
+pctoslib.lib		; TOS library

@@ -1,0 +1,14 @@
+* text=auto
+*.c -text
+*.h -text
+*.s -text
+*.S -text
+*.prj -text
+*.rsh -text
+*.rh -text
+*.inc -text
+*.i -text
+*.bat -text
+*.inf -text
+*.txt -text
+*.TXT -text
