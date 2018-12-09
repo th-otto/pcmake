@@ -182,6 +182,7 @@ bool domake(PRJ *prj, bool ignore_date);
 PRJ *loadmake(const char *f);
 void free_project(PRJ *prj);
 
+void set_pcdir(const char *argv0);
 const char *get_pcdir(void);
 const char *get_libdir(void);
 const char *get_includedir(void);

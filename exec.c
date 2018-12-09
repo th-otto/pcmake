@@ -10,22 +10,36 @@
 #endif
 #include "pcmake.h"
 
+static char *pc_dir;
+static char *pc_libdir;
+static char *pc_includedir;
+
+void set_pcdir(const char *argv0)
+{
+	if (argv0 == NULL || argv0[0] == '\0')
+		pc_dir = strdup("C:\\pc");
+	else
+		pc_dir = dirname(argv0);
+	pc_libdir = build_path(pc_dir, "lib");
+	pc_includedir = build_path(pc_dir, "include");
+}
+
 
 const char *get_pcdir(void)
 {
-	return "C:\\pc";
+	return pc_dir;
 }
 
 
 const char *get_libdir(void)
 {
-	return "C:\\pc\\lib";
+	return pc_libdir;
 }
 
 
 const char *get_includedir(void)
 {
-	return "C:\\pc\\include";
+	return pc_includedir;
 }
 
 

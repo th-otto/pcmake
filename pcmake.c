@@ -70,6 +70,7 @@ int main(int argc, const char **argv)
 	Fsetdta(&dta);
 	Pdomain(1);
 #endif
+	set_pcdir(argv[0]);
 	getopt_init_r(program_name, &opts);
 	getopt_seterrprint_r(opts, errout);
 	
