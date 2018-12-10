@@ -465,6 +465,13 @@ static void prj_params(const C_FLAGS *cflags, int *argc, char ***argv)
 }
 
 
+static void remove_output(const char *filename)
+{
+	fprintf(stdout, "rm %s\n", filename);
+	Fdelete(filename);
+}
+
+
 
 /*
  * docomp(prj, f) - run the compiler on the given .c file
@@ -513,12 +520,12 @@ static int docomp(PRJ *prj, filearg *ft)
 	{
 		if (cflags->nested_comments)
 			add_arg(&argc, &argv, "-C");	/* nested comments */
-		if (cflags->max_errors >= 0)
+		if (cflags->max_errors >= 0 && cflags->max_errors != DEFAULT_MAXERRS)
 		{
 			sprintf(buf, "-E%d", cflags->max_errors);
 			add_arg(&argc, &argv, buf);
 		}
-		if (cflags->max_warnings >= 0)
+		if (cflags->max_warnings >= 0 && cflags->max_warnings != DEFAULT_MAXWARNS)
 		{
 			sprintf(buf, "-F%d", cflags->max_warnings);
 			add_arg(&argc, &argv, buf);
@@ -531,7 +538,7 @@ static int docomp(PRJ *prj, filearg *ft)
 			add_arg(&argc, &argv, "-J");
 		if (cflags->char_is_unsigned)
 			add_arg(&argc, &argv, "-K");					/* default char is unsigned */
-		if (cflags->identifier_max_length >= 0)
+		if (cflags->identifier_max_length >= 0 && cflags->identifier_max_length != DEFAULT_IDLENGTH)
 		{
 			sprintf(buf, "-L%d", cflags->identifier_max_length);
 			add_arg(&argc, &argv, buf);
@@ -618,7 +625,7 @@ static int docomp(PRJ *prj, filearg *ft)
 	if ((warn = compiler(argc, (const char **)argv)) != 0)
 	{
 #if 0
-		Fdelete(output_name);
+		remove_output(output_name);
 #endif
 	}
 	
@@ -809,7 +816,7 @@ static bool dold(PRJ *prj)
 		{
 			errout(_("linker failed: %d\n"), rep);
 			if (prj->output_type != FT_PROJECT)
-				Fdelete(prj->output);
+				remove_output(prj->output);
 		}
 	}
 	

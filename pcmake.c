@@ -71,8 +71,10 @@ int main(int argc, const char **argv)
 	Pdomain(1);
 #endif
 	set_pcdir(argv[0]);
+#if 0
 	setvbuf(stdout, NULL, _IONBF, 0);
 	setvbuf(stderr, NULL, _IONBF, 0);
+#endif
 	
 	getopt_init_r(program_name, &opts);
 	getopt_seterrprint_r(opts, errout);
