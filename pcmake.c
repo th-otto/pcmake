@@ -19,6 +19,7 @@ enum opt {
 	OPT_ALL =             'B',
 	OPT_VERBOSE =         'v',
 	OPT_SILENT =          's',
+	OPT_CHANGEDIR =       'C',
 	OPT_HELP =            'h',
 	OPT_VERSION =         'V',
 };
@@ -35,6 +36,7 @@ static struct option const long_options[] = {
 	{ "always-make", no_argument, NULL, OPT_ALL },
 	{ "verbose", no_argument, NULL, OPT_VERBOSE },
 	{ "silent", no_argument, NULL, OPT_SILENT },
+	{ "directory", required_argument, NULL, OPT_CHANGEDIR },
 	{ "help", no_argument, NULL, OPT_HELP },
 	{ "version", no_argument, NULL, OPT_VERSION },
 	
@@ -66,7 +68,7 @@ int main(int argc, const char **argv)
 	int c;
 	int opti;
 	int err = EXIT_SUCCESS;
-	PRJ *prj;
+	PRJ *prj = NULL;
 	
 #if defined(__TOS__) || defined(__atarist__)
 	static DTA dta;
@@ -88,8 +90,9 @@ int main(int argc, const char **argv)
 	makeopts.ignore_date = false;
 	makeopts.verbose = 0;
 	makeopts.silent = false;
+	makeopts.directory = NULL;
 	
-	while ((c = getopt_long_only_r(argc, argv, "svBhV", long_options, NULL, opts)) != EOF)
+	while ((c = getopt_long_only_r(argc, argv, "C:svBhV", long_options, NULL, opts)) != EOF)
 	{
 		switch (c)
 		{
@@ -103,7 +106,10 @@ int main(int argc, const char **argv)
 		case OPT_SILENT:
 			makeopts.silent = true;
 			break;
-
+		case OPT_CHANGEDIR:
+			makeopts.directory = getopt_arg_r(opts);
+			break;
+		
 		case OPT_HELP:
 			show_help = true;
 			break;
@@ -112,7 +118,7 @@ int main(int argc, const char **argv)
 			break;
 
 		default:
-			fprintf(stderr, _("try %s --help for a list of valid options\n"), program_name);
+			errout(_("try %s --help for a list of valid options"), program_name);
 			err = EXIT_FAILURE;
 			break;
 		}
@@ -136,11 +142,25 @@ int main(int argc, const char **argv)
 		err = EXIT_FAILURE;
 	} else
 	{
-		prj = loadmake(&makeopts, argv[0]);
-		if (prj == NULL)
+		const char *prj_name = argv[0];
+		
+		if (makeopts.directory)
 		{
-			err = EXIT_FAILURE;
-		} else
+			char *dir = build_path(makeopts.directory, NULL);
+			if (Dsetpath(dir) < 0)
+			{
+				errout(_("%s: cannot chdir to %s"), program_name, dir);
+				err = EXIT_FAILURE;
+			}
+			g_free(dir);
+		}
+		if (err == EXIT_SUCCESS)
+		{
+			prj = loadmake(&makeopts, prj_name);
+			if (prj == NULL)
+				err = EXIT_FAILURE;
+		}
+		if (err == EXIT_SUCCESS)
 		{
 			if (!domake(prj, &makeopts))
 				err = EXIT_FAILURE;

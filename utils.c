@@ -43,7 +43,7 @@ void errout(const char *format, ...)
 
 void oom(size_t size)
 {
-	errout(_("Not enough memory for %lu bytes\n"), (unsigned long)size);
+	errout(_("Not enough memory for %lu bytes"), (unsigned long)size);
 	exit(1);
 }
 

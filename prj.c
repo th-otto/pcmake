@@ -377,7 +377,7 @@ static int makeok(PRJ *prj, MAKEOPTS *opts, filearg *ft, const char *objname, in
 	fh = (int)Fopen(srcname, FO_READ);
 	if (fh <= 0)
 	{
-		errout(_("%d>%s: Can't open %s\n"), lvl, program_name, srcname);
+		errout(_("%d>%s: Can't open %s"), lvl, program_name, srcname);
 		g_free(srcname);
 		return -1;
 	}
@@ -395,7 +395,7 @@ static int makeok(PRJ *prj, MAKEOPTS *opts, filearg *ft, const char *objname, in
 			fh = (int)Fopen(f, FO_READ);
 			if (fh <= 0)
 			{
-				errout(_("%d>%s: Can't open %s\n"), lvl, program_name, f);
+				errout(_("%d>%s: Can't open %s"), lvl, program_name, f);
 				g_free(f);
 				return -1;
 			}
@@ -668,7 +668,7 @@ static char *look_CC(PRJ *prj, filearg *ft, const char *msg)
 	}
 	if (!found)
 	{
-		errout(_("can't find %s '%s'\n"), msg, ft->name);
+		errout(_("can't find %s '%s'"), msg, ft->name);
 		g_free(name);
 		name = NULL;
 	}
@@ -691,7 +691,7 @@ static bool dold(PRJ *prj, MAKEOPTS *opts)
 	
 	if (prj->inputs == NULL)
 	{
-		errout(_("nothing to link\n"));
+		errout(_("nothing to link"));
 		return false;
 	}
 	
@@ -821,7 +821,7 @@ static bool dold(PRJ *prj, MAKEOPTS *opts)
 		rep = linker(argc, (const char **)argv);
 		if (rep)
 		{
-			errout(_("linker failed: %d\n"), rep);
+			errout(_("linker failed: %d"), rep);
 			if (prj->output_type != FT_PROJECT)
 				remove_output(prj->output);
 		}
@@ -917,7 +917,7 @@ static int make_prj(PRJ *prj, MAKEOPTS *opts, int level)
 					fh = (int)Fopen(name, FO_READ);
 					if (fh <= 0)
 					{
-						errout(_("%d>%s: Can't open %s\n"), level, program_name, name);
+						errout(_("%d>%s: Can't open %s"), level, program_name, name);
 						g_free(name);
 						return -1;
 					}
@@ -988,7 +988,7 @@ bool domake(PRJ *prj, MAKEOPTS *opts)
 	/* run make */
 	if (prj->inputs == NULL)
 	{
-		errout(_("nothing to make\n"));
+		errout(_("nothing to make"));
 	} else
 	{
 		anycomp = make_prj(prj, opts, 0);	/* recursive make */
@@ -1068,7 +1068,7 @@ static PRJ *load_prj(MAKEOPTS *opts, const char *f, int level)
 	
 	if ((fp = fopen(f, "r")) == NULL)
 	{
-		errout(_("%d>Can't open project file: %s\n"), level, f);
+		errout(_("%d>Can't open project file: %s"), level, f);
 		return NULL;
 	}
 
@@ -1153,14 +1153,14 @@ static PRJ *load_prj(MAKEOPTS *opts, const char *f, int level)
 				}
 				if (result == false)
 				{
-					errout(_("%s: %s:%ld: Illegal option specification\n"), Error, f, lineno);
+					errout(_("%s: %s:%ld: Illegal option specification"), Error, f, lineno);
 					retval = false;
 				}
 			} else if (c == '=')
 			{
 				if (section != 0)
 				{
-					errout(_("%s: %s:%ld: Illegal filename\n"), Error, f, lineno);
+					errout(_("%s: %s:%ld: Illegal filename"), Error, f, lineno);
 					retval = false;
 				} else
 				{
@@ -1184,7 +1184,7 @@ static PRJ *load_prj(MAKEOPTS *opts, const char *f, int level)
 					{
 						if (prj->output)
 						{
-							errout(_("%s: duplicate output file '%s'\n"), program_name, ps);
+							errout(_("%s: duplicate output file '%s'"), program_name, ps);
 							g_free(ps);
 							return FT_UNKNOWN;
 						}
@@ -1202,7 +1202,7 @@ static PRJ *load_prj(MAKEOPTS *opts, const char *f, int level)
 				g_free(fnm);
 				if (keep == NULL || keep->filetype == FT_UNKNOWN)
 				{
-					errout(_("%d>%s: %s:%ld: unknown file suffix '%s'\n"), level, Error, f, lineno, ps);
+					errout(_("%d>%s: %s:%ld: unknown file suffix '%s'"), level, Error, f, lineno, ps);
 					retval = false;
 					g_free(ps);
 				} else
@@ -1229,7 +1229,7 @@ static PRJ *load_prj(MAKEOPTS *opts, const char *f, int level)
 							}
 							if (skipwhite(&s) != ')')
 							{
-								errout(_("%s: %s:%ld: ')' expected\n"), Error, f, lineno);
+								errout(_("%s: %s:%ld: ')' expected"), Error, f, lineno);
 								retval = false;
 							} else
 							{
@@ -1253,7 +1253,7 @@ static PRJ *load_prj(MAKEOPTS *opts, const char *f, int level)
 								result = false;
 							if (result == false)
 							{
-								errout(_("%s: %s:%ld: Illegal option specification: %s\n"), Error, f, lineno, opt);
+								errout(_("%s: %s:%ld: Illegal option specification: %s"), Error, f, lineno, opt);
 								retval = false;
 							}
 							g_free(opt);

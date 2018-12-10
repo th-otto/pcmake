@@ -264,7 +264,7 @@ static int do_exec(int argc, const char **argv)
 	}
 	if (result < 0)
 	{
-		errout("%s: %s: %s\n", program_name, argv[0], strerror(errno));
+		errout("%s: %s: %s", program_name, argv[0], strerror(errno));
 	}
 	
 	return result;

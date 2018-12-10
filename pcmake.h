@@ -134,6 +134,7 @@ typedef struct _makeopts {
 	int verbose;
 	bool ignore_date;
 	bool silent;
+	const char *directory;
 } MAKEOPTS;
 
 #define _(x) x
