@@ -559,10 +559,15 @@ static int docomp(PRJ *prj, filearg *ft)
 			add_arg(&argc, &argv, "-X");
 		if (cflags->no_register_reload)
 			add_arg(&argc, &argv, "-Z");	/* suppress registerization */
-		if (cflags->warning_enabled[WARN_GOT])
-			add_arg(&argc, &argv, "-W+got");	/* warn goto's */
+			
 		if (cflags->default_int32)
 			add_arg(&argc, &argv, "--mno-short");					/* default int is 32 bits */
+		
+		for (warn = 0; warn < WARN_MAX; warn++)
+		{
+			if (cflags->warning_enabled[warn] >= 0)
+				add_optarg(&argc, &argv, cflags->warning_enabled[warn] ? "-W" : "-W-", warnings[warn].short_switch);
+		}
 	}
 	if (!is_asm && cflags->Coldfire && cflags->i2_68020)
 		add_arg(&argc, &argv, "-27");

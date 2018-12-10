@@ -32,6 +32,7 @@ typedef enum {
 	WARN_SIG,			/* "Conversion may lose significant digits." */
 	WARN_UCP,			/* "Mixing pointers to signed and unsigned char." */
 	WARN_RPT,			/* "Non portable pointer assignment." */
+	WARN_PC_LAST = WARN_RPT,
 /* AHCC specific warnings: */
 	WARN_CON,			/* "uninitialized const object" */
 	WARN_GOT,			/* "'goto' used */
@@ -45,10 +46,7 @@ typedef enum {
 	WARN_ASS,			/* "'%s' is a assembler directive" */
 	WARN_PMA,			/* "unknown pragma" */
 	WARN_PCC,			/* several */
-/* "A" specific warnings: */
-	WARN_ROW,			/* "'%s' on formally declared row" */
-	WARN_FOW,			/* "'%s' ignored" */
-	WARN_OPN,			/* "open unit: '%s' assumed" */
+	WARN_AHCC_LAST = WARN_PCC,
 /* Assembler warnings: */
 	WARN_LBL,			/* "'%%N' needs constant expression or register name" */
 	WARN_DIF,			/* "can not diff %%N with advance ref" */
@@ -57,5 +55,14 @@ typedef enum {
 	WARN_MAX
 } warning_category;
 
+typedef struct {
+	warning_category category;
+	char short_switch[4];
+	int level;
+	const char *long_switch; /* should follow gnu warning names; NYI */
+	const char *msg;
+} warning;
+
+extern warning const warnings[];
 
 #endif /* __WARNINGS_H__*/

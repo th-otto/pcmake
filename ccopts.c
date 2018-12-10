@@ -11,15 +11,7 @@
 #include "pcmake.h"
 
 
-typedef struct {
-	warning_category category;
-	char short_switch[4];
-	int level;
-	const char *long_switch; /* should follow gnu warning names; NYI */
-	const char *msg;
-} warning;
-
-static warning const warnings[] = {
+warning const warnings[] = {
 /*    category    short name  level   long name    text */
 	/* for internal messages */
 	{ WARN_ANY,   "*",        999,    NULL,        "" },
@@ -184,7 +176,7 @@ void init_cflags(C_FLAGS *flg)
 	
 	flg->warning_level = DEFAULT_WARNINGLEVEL;
 	for (i = 0; i < WARN_MAX; i++)
-		flg->warning_enabled[i] = false;
+		flg->warning_enabled[i] = -1;
 	
 	flg->no_output = false;
 

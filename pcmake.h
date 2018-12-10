@@ -59,7 +59,7 @@ typedef struct _cflags {
 	bool default_int32;			/* -mno-short, default int 32 bits */
 
 	int warning_level;
-	bool warning_enabled[WARN_MAX];
+	signed char warning_enabled[WARN_MAX];
 	
 	bool no_output;
 	
