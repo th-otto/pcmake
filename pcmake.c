@@ -15,10 +15,13 @@
 #include "getopt.h"
 #include "pcmake.h"
 
-#define OPT_ALL              'B'
-#define OPT_VERBOSE          'v'
-#define OPT_HELP             'h'
-#define OPT_VERSION          'V'
+enum opt {
+	OPT_ALL =             'B',
+	OPT_VERBOSE =         'v',
+	OPT_SILENT =          's',
+	OPT_HELP =            'h',
+	OPT_VERSION =         'V',
+};
 
 char const program_name[] = "pcmake";
 char const program_version[] = "1.0";
@@ -26,12 +29,12 @@ char const program_version[] = "1.0";
 static bool show_version;
 static bool show_help;
 
-bool make_all;
-int verbose;
+static MAKEOPTS makeopts;
 
 static struct option const long_options[] = {
-	{ "all", no_argument, NULL, OPT_ALL },
+	{ "always-make", no_argument, NULL, OPT_ALL },
 	{ "verbose", no_argument, NULL, OPT_VERBOSE },
+	{ "silent", no_argument, NULL, OPT_SILENT },
 	{ "help", no_argument, NULL, OPT_HELP },
 	{ "version", no_argument, NULL, OPT_VERSION },
 	
@@ -81,25 +84,33 @@ int main(int argc, const char **argv)
 	
 	show_help = false;
 	show_version = false;
-	make_all = false;
-	verbose = 0;
+	makeopts.make_all = false;
+	makeopts.ignore_date = false;
+	makeopts.verbose = 0;
+	makeopts.silent = false;
 	
-	while ((c = getopt_long_only_r(argc, argv, "BhvV", long_options, NULL, opts)) != EOF)
+	while ((c = getopt_long_only_r(argc, argv, "svBhV", long_options, NULL, opts)) != EOF)
 	{
 		switch (c)
 		{
 		case OPT_ALL:
-			make_all = true;
+			makeopts.make_all = true;
+			makeopts.ignore_date = true;
 			break;
 		case OPT_VERBOSE:
-			++verbose;
+			++makeopts.verbose;
 			break;
+		case OPT_SILENT:
+			makeopts.silent = true;
+			break;
+
 		case OPT_HELP:
 			show_help = true;
 			break;
 		case OPT_VERSION:
 			show_version = true;
 			break;
+
 		default:
 			fprintf(stderr, _("try %s --help for a list of valid options\n"), program_name);
 			err = EXIT_FAILURE;
@@ -125,21 +136,14 @@ int main(int argc, const char **argv)
 		err = EXIT_FAILURE;
 	} else
 	{
-		prj = loadmake(argv[0]);
+		prj = loadmake(&makeopts, argv[0]);
 		if (prj == NULL)
 		{
 			err = EXIT_FAILURE;
 		} else
 		{
-			if (make_all)
-			{
-				if (!domakeall(prj))
-					err = EXIT_FAILURE;
-			} else
-			{
-				if (!domake(prj, false))
-					err = EXIT_FAILURE;
-			}
+			if (!domake(prj, &makeopts))
+				err = EXIT_FAILURE;
 			free_project(prj);
 		}
 	}

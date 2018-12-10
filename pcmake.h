@@ -129,6 +129,12 @@ struct project
 	FTY output_type;
 };
 
+typedef struct _makeopts {
+	bool make_all;
+	int verbose;
+	bool ignore_date;
+	bool silent;
+} MAKEOPTS;
 
 #define _(x) x
 #define N_(x) x
@@ -139,9 +145,6 @@ extern char const Warning[];
 extern char const Error[];
 extern char const suff_o[];
 extern char const suff_prg[];
-
-extern int verbose;
-extern bool make_all;
 
 
 void adddef(C_FLAGS *flg, const char *str);
@@ -176,10 +179,9 @@ void init_ldflags(LD_FLAGS *flg);
 void free_ldflags(LD_FLAGS *flg);
 bool parse_ld_options(const char *arg, LD_FLAGS *flg);
 
-bool domakeall(PRJ *prj);
-bool domake(PRJ *prj, bool ignore_date);
+bool domake(PRJ *prj, MAKEOPTS *opts);
 
-PRJ *loadmake(const char *f);
+PRJ *loadmake(MAKEOPTS *opts, const char *f);
 void free_project(PRJ *prj);
 
 void set_pcdir(const char *argv0);

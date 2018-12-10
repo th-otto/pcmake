@@ -3,7 +3,7 @@ CROSS_PREFIX = m68k-atari-mint-
 CC = $(CROSS_PREFIX)gcc
 AS = $(CROSS_PREFIX)gcc
 LD = $(CC)
-WARNINGS = -Wall -Wextra -Wstrict-prototypes -Wmissing-prototypes -Wno-nonnull-compare
+WARNINGS = -Wall -Wextra -Wstrict-prototypes -Wmissing-prototypes
 CFLAGS = -Os -fomit-frame-pointer $(WARNINGS)
 LDFLAGS = -s
 

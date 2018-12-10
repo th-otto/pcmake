@@ -355,7 +355,7 @@ static void touch(PRJ *prj, filearg *ft)
 }
 
 
-static int makeok(PRJ *prj, filearg *ft, const char *objname, int lvl)
+static int makeok(PRJ *prj, MAKEOPTS *opts, filearg *ft, const char *objname, int lvl)
 {
 	int fh;
 	DOSTIME obj_timestamp, src_timestamp;
@@ -366,7 +366,7 @@ static int makeok(PRJ *prj, filearg *ft, const char *objname, int lvl)
 	fh = (int)Fopen(objname, FO_READ);
 	if (fh <= 0)
 	{
-		if (verbose > 1)
+		if (opts->verbose > 1)
 			fprintf(stdout, _("compiling %s because %s is missing\n"), ft->name, objname);
 		return 1;						/* .o absent, must compile */
 	}
@@ -403,7 +403,7 @@ static int makeok(PRJ *prj, filearg *ft, const char *objname, int lvl)
 			Fclose(fh);
 			if (older(&obj_timestamp, &src_timestamp))
 			{
-				if (verbose > 1)
+				if (opts->verbose > 1)
 					fprintf(stdout, _("compiling %s because %s is newer than %s\n"), ft->name, f, objname);
 				g_free(f);
 				return 1;
@@ -412,7 +412,7 @@ static int makeok(PRJ *prj, filearg *ft, const char *objname, int lvl)
 		}
 		return 0;
 	}
-	if (verbose > 1)
+	if (opts->verbose > 1)
 		fprintf(stdout, _("compiling %s because %s is newer than %s\n"), ft->name, srcname, objname);
 	g_free(srcname);
 	return 1;		/* we must compile */
@@ -476,7 +476,7 @@ static void remove_output(const char *filename)
 /*
  * docomp(prj, f) - run the compiler on the given .c file
  */
-static int docomp(PRJ *prj, filearg *ft)
+static int docomp(PRJ *prj, MAKEOPTS *opts, filearg *ft)
 {
 	int warn;
 	int argc;
@@ -615,10 +615,11 @@ static int docomp(PRJ *prj, filearg *ft)
 
 	add_arg(&argc, &argv, srcname);
 	
+	if (!opts->silent)
 	{
 		int i;
 
-		if (verbose > 0)
+		if (opts->verbose > 0)
 			fprintf(stdout, _("\n****  Compiling %s\n"), srcname);
 		fprintf(stdout, "%s", argv[0]);
 		for (i = 1; i < argc; i++)
@@ -639,7 +640,7 @@ static int docomp(PRJ *prj, filearg *ft)
 	
 	if (warn == 0)
 	{
-		if (verbose > 0)
+		if (opts->verbose > 0)
 			fprintf(stdout, _("compilation OK\n"));
 	}
 
@@ -680,7 +681,7 @@ static char *look_CC(PRJ *prj, filearg *ft, const char *msg)
  * dold() - run the loader
  */
 
-static bool dold(PRJ *prj)
+static bool dold(PRJ *prj, MAKEOPTS *opts)
 {
 	char **argv;
 	int argc;
@@ -805,10 +806,11 @@ static bool dold(PRJ *prj)
 	
 	if (rep == 0)
 	{
+		if (!opts->silent)
 		{
 			int i;
 			
-			if (verbose > 0)
+			if (opts->verbose > 0)
 				fprintf(stdout, _("\n****  Linking %s\n"), prj->filename);
 			fprintf(stdout, "%s", argv[0]);
 			for (i = 1; i < argc; i++)
@@ -832,7 +834,7 @@ static bool dold(PRJ *prj)
 
 
 
-static int make_prj(PRJ *prj, bool ignore_date, int level)
+static int make_prj(PRJ *prj, MAKEOPTS *opts, int level)
 {
 	int r, anycomp = 0;
 	int fh;
@@ -845,10 +847,10 @@ static int make_prj(PRJ *prj, bool ignore_date, int level)
 		{
 			char *of = objname_for_src(prj, ft);
 
-			if (ignore_date)
+			if (opts->ignore_date)
 				r = 1;
 			else
-				r = makeok(prj, ft, of, level);	/* recursive check timestamp */
+				r = makeok(prj, opts, ft, of, level);	/* recursive check timestamp */
 			g_free(of);
 			if (r < 0)
 				return r;
@@ -857,12 +859,12 @@ static int make_prj(PRJ *prj, bool ignore_date, int level)
 
 			if (r == 1)
 			{
-				if (docomp(prj, ft) != 0)
+				if (docomp(prj, opts, ft) != 0)
 					return -1;		/* errors */
 			}
 		} else if (ft->filetype == FT_PROJECT)
 		{
-			r = make_prj(ft->u.prj, ignore_date, level + 1);
+			r = make_prj(ft->u.prj, opts, level + 1);
 	
 			if (r < 0)
 				return -r;					/* errors */
@@ -872,7 +874,7 @@ static int make_prj(PRJ *prj, bool ignore_date, int level)
 
 	if (anycomp == 0)
 	{
-		if (ignore_date)
+		if (opts->ignore_date)
 		{
 			anycomp = 1;
 		} else
@@ -924,7 +926,8 @@ static int make_prj(PRJ *prj, bool ignore_date, int level)
 					Fclose(fh);
 					if (older(&prg_timestamp, &src_timestamp))
 					{
-						anycomp = 1;
+						if (prj->output_type != FT_PROJECT)
+							anycomp = 1;
 						break;
 					}
 				}
@@ -932,34 +935,13 @@ static int make_prj(PRJ *prj, bool ignore_date, int level)
 		}
 	}
 	
-	if (anycomp > 0)
+	if (anycomp > 0 && prj->output_type != FT_PROJECT)
 	{
-		if (dold(prj) == false)						/* run the loader */
+		if (dold(prj, opts) == false)						/* run the loader */
 			anycomp = -1;
 	}
 	
 	return anycomp;
-}
-
-
-bool domake(PRJ *prj, bool ignore_date)
-{
-	int anycomp;
-
-	if (prj->inputs == NULL)
-	{
-		errout(_("nothing to make\n"));
-	} else
-	{
-		anycomp = make_prj(prj, ignore_date, 0);	/* recursive make */
-
-		if (anycomp < 0)
-			return false;
-		
-		if (anycomp == 0)
-			fprintf(stdout, _("%s: %s is up to date\n"), program_name, prj->output ? prj->output : prj->filename);
-	}
-	return true;
 }
 
 
@@ -985,44 +967,67 @@ static void clear_dates(PRJ *prj, int level)
 }
 
 
-bool domakeall(PRJ *prj)				/* updates all objects filestamp, call make */
+bool domake(PRJ *prj, MAKEOPTS *opts)
 {
 	unsigned long cmins, csecs, secs;
+	int anycomp;
 
 	memset(&stats, 0, sizeof(stats));
 	stats.start = clock();
 	
-	/*
-	 * we will ignore timestamps on this run,
-	 * but it might still be useful to clear the dates
-	 * in case the shell is restarted
-	 */
-	clear_dates(prj, 0);
+	if (opts->make_all)
+	{
+		/*
+		 * we will ignore timestamps on this run,
+		 * but it might still be useful to clear the dates
+		 * in case the shell is restarted
+		 */
+		clear_dates(prj, 0);
+	}
+	
+	/* run make */
+	if (prj->inputs == NULL)
+	{
+		errout(_("nothing to make\n"));
+	} else
+	{
+		anycomp = make_prj(prj, opts, 0);	/* recursive make */
 
-	if (!domake(prj, true))					/* run make */
-		return false;
+		if (anycomp < 0)
+			return false;
+		
+		if (anycomp == 0)
+			fprintf(stdout, _("%s: %s is up to date\n"), program_name, prj->output ? prj->output : prj->filename);
+	}
 
 	stats.end = clock();
-	stats.time = stats.end - stats.start;
-	csecs = stats.time / CLK_TCK;
-	cmins = csecs / 60;
-	secs = csecs % 60;
-	fprintf(stdout, _("\nMake_all statistics\n"));
-	fprintf(stdout, _("Project:\n"));
-	fprintf(stdout, _("bytes  : %7ld\n"), stats.bytes);
-	fprintf(stdout, _("lines  : %7ld\n"), stats.lines);
-	if (stats.lines)
-		fprintf(stdout, ("       = %7ld bytes/line\n"), stats.bytes / stats.lines);
-	fprintf(stdout, _("Compiled:\n"));
-	fprintf(stdout, _("bytes  : %7ld\n"), stats.cbytes);
-	fprintf(stdout, _("lines  : %7ld\n"), stats.clines);
-	if (stats.clines)
-		fprintf(stdout, _("       = %7ld bytes/line\n"), stats.cbytes / stats.clines);
-	fprintf(stdout, _("time   : %4ld'%02ld\" (%ld)\n"), cmins, secs, csecs);
-	if (csecs)
+	if (opts->make_all)
 	{
-		fprintf(stdout, _("       = %7ld bytes/second\n"), stats.cbytes / csecs);
-		fprintf(stdout, _("         %7ld lines/second\n"), stats.clines / csecs);
+		stats.time = stats.end - stats.start;
+		csecs = stats.time / CLK_TCK;
+		cmins = csecs / 60;
+		secs = csecs % 60;
+		fprintf(stdout, _("\nMake_all statistics\n"));
+#if 0
+		fprintf(stdout, _("Project:\n"));
+		fprintf(stdout, _("bytes  : %7ld\n"), stats.bytes);
+		fprintf(stdout, _("lines  : %7ld\n"), stats.lines);
+		if (stats.lines)
+			fprintf(stdout, ("       = %7ld bytes/line\n"), stats.bytes / stats.lines);
+		fprintf(stdout, _("Compiled:\n"));
+		fprintf(stdout, _("bytes  : %7ld\n"), stats.cbytes);
+		fprintf(stdout, _("lines  : %7ld\n"), stats.clines);
+		if (stats.clines)
+			fprintf(stdout, _("       = %7ld bytes/line\n"), stats.cbytes / stats.clines);
+#endif
+		fprintf(stdout, _("time   : %4ld'%02ld\" (%ld)\n"), cmins, secs, csecs);
+#if 0
+		if (csecs)
+		{
+			fprintf(stdout, _("       = %7ld bytes/second\n"), stats.cbytes / csecs);
+			fprintf(stdout, _("         %7ld lines/second\n"), stats.clines / csecs);
+		}
+#endif
 	}
 	return true;
 }
@@ -1049,7 +1054,7 @@ static char *add_options(char **fro)
 }
 
 
-static PRJ *load_prj(const char *f, int level)
+static PRJ *load_prj(MAKEOPTS *opts, const char *f, int level)
 {
 	FILE *fp;
 	char st[1024];
@@ -1100,7 +1105,7 @@ static PRJ *load_prj(const char *f, int level)
 
 		if (*s)							/* anything left ? */
 		{
-			if (verbose >= 2)
+			if (opts->verbose >= 2)
 				fprintf(stdout, "%d>'%s'\n", level, s);
 
 			c = skipwhite(&s);
@@ -1258,7 +1263,7 @@ static PRJ *load_prj(const char *f, int level)
 						if (keep->filetype == FT_PROJECT)
 						{
 							char *name = build_path(prj->directory, keep->name);
-							keep->u.prj = load_prj(name, level + 1);
+							keep->u.prj = load_prj(opts, name, level + 1);
 							g_free(name);
 							if (keep->u.prj == NULL)
 								retval = false;
@@ -1286,10 +1291,10 @@ static PRJ *load_prj(const char *f, int level)
 }
 
 
-PRJ *loadmake(const char *f)
+PRJ *loadmake(MAKEOPTS *opts, const char *f)
 {
-	if (verbose >= 1)
+	if (opts->verbose >= 1)
 		fprintf(stdout, _("Loading project file %s\n"), f);
 	
-	return load_prj(f, 0);
+	return load_prj(opts, f, 0);
 }
