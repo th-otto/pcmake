@@ -720,7 +720,8 @@ static bool dold(PRJ *prj)
 	}
 	if (prj->ld_flags.stacksize > 0)
 	{
-		sprintf(buf, "-S=0x%08lx", prj->ld_flags.stacksize);
+		/* no hex output here; the linker does not accept this */
+		sprintf(buf, "-S=%lu", prj->ld_flags.stacksize);
 		add_arg(&argc, &argv, buf);
 	}
 	if (prj->ld_flags.text_start > 0)

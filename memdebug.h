@@ -12,7 +12,7 @@
  * 4 - same as 3 and write log file to "dbgalloc.trc"
  */
 #ifndef DEBUG_ALLOC
-#  define DEBUG_ALLOC 2
+#  define DEBUG_ALLOC 0
 #endif
 
 #ifdef HAVE_GTK

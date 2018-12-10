@@ -3,7 +3,7 @@ c:\pc\pcmake.ttp
 .C [-2- -8-]
 
 .C [-A- -H- -K-]
-.C [-C- -M -P- -G]
+.C [-C- -M -P- -G -Y]
 .L [-S=32768]
 =
 cstartv.o
