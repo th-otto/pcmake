@@ -134,7 +134,7 @@ typedef struct _makeopts {
 	int verbose;
 	bool ignore_date;
 	bool silent;
-	const char *directory;
+	char *directory;
 } MAKEOPTS;
 
 #define _(x) x
@@ -166,6 +166,8 @@ char *build_path(const char *dir, const char *fname);
 char *change_suffix(const char *filename, const char *ext);
 bool file_exists(const char *f);
 char *dirname(const char *f);
+void strbslash(char *str);
+int ch_dir(const char *path);
 
 
 int get_warning_level(warning_category category);

@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <errno.h>
 #if defined(__TOS__) || defined(__atarist__)
 #ifdef __GNUC__
 #include <osbind.h>
@@ -262,8 +263,10 @@ FTY filetype(const char *filename)
 
 /* ---------------------------------------------------------------------- */
 
-static void strbslash(char *str)
+void strbslash(char *str)
 {
+	if (str == NULL)
+		return;
 	while (*str)
 	{
 		if (*str == fslash)
@@ -346,4 +349,32 @@ char *dirname(const char *f)
 		*m = '\0';
 	}
 	return m;
+}
+
+/* ---------------------------------------------------------------------- */
+
+int ch_dir(const char *path)
+{
+	int r = 0;
+	int drv;
+	
+	if (path == NULL)
+		return -ENOENT;
+	if (path[0] >= 'A' && path[0] <= 'Z')
+		drv = path[0] - 'A';
+	else if (path[0] >= 'a' && path[0] <= 'z')
+		drv = path[0] - 'a';
+	else
+		drv = -1;
+	if (drv >= 0 && path[1] == ':' &&
+		(path[2] == '/' || path[2] == '\\' || path[2] == '\0'))
+	{
+		Dsetdrv(drv);
+		path += 2;
+	}
+	if (path[0] != '\0')
+	{
+		r = (int)Dsetpath(path);
+	}
+	return r;
 }

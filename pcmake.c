@@ -107,7 +107,9 @@ int main(int argc, const char **argv)
 			makeopts.silent = true;
 			break;
 		case OPT_CHANGEDIR:
-			makeopts.directory = getopt_arg_r(opts);
+			g_free(makeopts.directory);
+			makeopts.directory = g_strdup(getopt_arg_r(opts));
+			strbslash(makeopts.directory);
 			break;
 		
 		case OPT_HELP:
@@ -147,7 +149,7 @@ int main(int argc, const char **argv)
 		if (makeopts.directory)
 		{
 			char *dir = build_path(makeopts.directory, NULL);
-			if (Dsetpath(dir) < 0)
+			if (ch_dir(dir) < 0)
 			{
 				errout(_("%s: cannot chdir to %s"), program_name, dir);
 				err = EXIT_FAILURE;
@@ -169,6 +171,7 @@ int main(int argc, const char **argv)
 	}
 
 	exec_exit();
+	g_free(makeopts.directory);
 	
 #if DEBUG_ALLOC
 	_crtexit();

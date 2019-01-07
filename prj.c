@@ -126,6 +126,38 @@ static char *parse_filename(char **ln)
 	return str;
 }
 
+/* ---------------------------------------------------------------------- */
+
+static char *get_cwd(void)
+{
+	char path[1024];
+	int drv;
+	int r;
+	
+	drv = Dgetdrv();
+	path[0] = drv + 'A';
+	path[1] = ':';
+	path[2] = '\0';
+	r = (int)Dgetcwd(path + 2, 0, (int)sizeof(path) - 2);
+	if (r == -32)
+	{
+		r = (int)Dgetpath(path + 2, 0);
+	}
+	if (r < 0)
+		return NULL;
+	return g_strdup(path);
+}
+
+/* ---------------------------------------------------------------------- */
+
+static char *dup_filename(const char *name)
+{
+	char *str = g_strdup(name);
+	if (str)
+		strbslash(str);
+	return str;
+}
+
 /**************************************************************************/
 /* ---------------------------------------------------------------------- */
 /**************************************************************************/
@@ -319,14 +351,11 @@ static char *objname_for_src(PRJ *prj, filearg *ft)
 		g_free(tmp);
 	} else
 	{
-		tmp = build_path(prj->directory, ft->name);
-		objname = change_suffix(tmp, suff_o);
-		g_free(tmp);
+		objname = change_suffix(ft->name, suff_o);
+		strbslash(objname);
 	}
 	return objname;
 }
-
-
 
 
 static void touch(PRJ *prj, filearg *ft)
@@ -337,7 +366,7 @@ static void touch(PRJ *prj, filearg *ft)
 	
 	t.time = 0;
 	t.date = 0x21;
-	name = build_path(prj->directory, ft->name);
+	name = dup_filename(ft->name);
 	if ((h = (int)Fopen(name, FO_READ)) >= 0)
 	{
 		char *o;
@@ -363,6 +392,7 @@ static int makeok(PRJ *prj, MAKEOPTS *opts, filearg *ft, const char *objname, in
 	char *f;
 	char *srcname;
 	
+	(void)(prj);
 	fh = (int)Fopen(objname, FO_READ);
 	if (fh <= 0)
 	{
@@ -373,7 +403,7 @@ static int makeok(PRJ *prj, MAKEOPTS *opts, filearg *ft, const char *objname, in
 	Fdatime(&obj_timestamp, fh, 0);				/* object (target) */
 	Fclose(fh);
 
-	srcname = build_path(prj->directory, ft->name);
+	srcname = dup_filename(ft->name);
 	fh = (int)Fopen(srcname, FO_READ);
 	if (fh <= 0)
 	{
@@ -391,7 +421,7 @@ static int makeok(PRJ *prj, MAKEOPTS *opts, filearg *ft, const char *objname, in
 		/* src older than object; check dependencies */
 		for (dep = ft->dependencies; dep; dep = dep->next)
 		{
-			f = build_path(prj->directory, dep->str);
+			f = dup_filename(dep->str);
 			fh = (int)Fopen(f, FO_READ);
 			if (fh <= 0)
 			{
@@ -590,7 +620,7 @@ static int docomp(PRJ *prj, MAKEOPTS *opts, filearg *ft)
 	if (cflags->no_output)
 		add_arg(&argc, &argv, "--fno-output");
 
-	srcname = build_path(prj->directory, ft->name);
+	srcname = dup_filename(ft->name);
 	
 #if 0
 	if (cflags->output_directory != NULL && cflags->output_directory[0] != '\0')
@@ -605,7 +635,7 @@ static int docomp(PRJ *prj, MAKEOPTS *opts, filearg *ft)
 	
 	if (cflags->output_name)
 	{
-		output_name = build_path(prj->directory, cflags->output_name);
+		output_name = dup_filename(cflags->output_name);
 	} else
 	{
 		output_name = objname_for_src(prj, ft);
@@ -653,7 +683,7 @@ static char *look_CC(PRJ *prj, filearg *ft, const char *msg)
 	char *name;
 	bool found;
 	
-	name = build_path(prj->directory, ft->name);
+	name = dup_filename(ft->name);
 	if (file_exists(name) || is_absolute_path(ft->name))
 	{
 		found = true;
@@ -833,15 +863,25 @@ static bool dold(PRJ *prj, MAKEOPTS *opts)
 }
 
 
-
 static int make_prj(PRJ *prj, MAKEOPTS *opts, int level)
 {
-	int r, anycomp = 0;
+	int r;
+	int anycomp;
 	int fh;
 	filearg *ft;
 	char *name;
-		
-	for (ft = prj->inputs; ft; ft = ft->next)
+	char *curdir;
+	
+	r = 0;
+	anycomp = 0;
+	curdir = get_cwd();
+	if (ch_dir(prj->directory) < 0)
+	{
+		errout(_("%s: cannot chdir to %s"), program_name, prj->directory);
+		r = -1;
+	}
+
+	for (ft = prj->inputs; ft && r >= 0; ft = ft->next)
 	{
 		if (ft->filetype == FT_CSOURCE || ft->filetype == FT_ASSOURCE)
 		{
@@ -852,27 +892,26 @@ static int make_prj(PRJ *prj, MAKEOPTS *opts, int level)
 			else
 				r = makeok(prj, opts, ft, of, level);	/* recursive check timestamp */
 			g_free(of);
-			if (r < 0)
-				return r;
-			
-			anycomp += r;
-
-			if (r == 1)
+			if (r >= 0)
 			{
-				if (docomp(prj, opts, ft) != 0)
-					return -1;		/* errors */
+				anycomp += r;
+	
+				if (r == 1)
+				{
+					if (docomp(prj, opts, ft) != 0)
+						r = -1;		/* errors */
+				}
 			}
 		} else if (ft->filetype == FT_PROJECT)
 		{
 			r = make_prj(ft->u.prj, opts, level + 1);
 	
-			if (r < 0)
-				return -r;					/* errors */
-			anycomp += r;
+			if (r >= 0)
+				anycomp += r;
 		}
 	}
 
-	if (anycomp == 0)
+	if (anycomp == 0 && r >= 0)
 	{
 		if (opts->ignore_date)
 		{
@@ -888,7 +927,7 @@ static int make_prj(PRJ *prj, MAKEOPTS *opts, int level)
 			{
 				Fdatime(&prg_timestamp, fh, 0);
 				Fclose(fh);
-				for (ft = prj->inputs; ft; ft = ft->next)
+				for (ft = prj->inputs; ft && r >= 0; ft = ft->next)
 				{
 					switch (ft->filetype)
 					{
@@ -901,55 +940,75 @@ static int make_prj(PRJ *prj, MAKEOPTS *opts, int level)
 					case FT_OBJECT:
 						if ((name = look_CC(prj, ft, _("start up"))) == NULL)
 						{
-							return -1;
+							r = -1;
 						}
 						break;
 					case FT_LIBRARY:
 						if ((name = look_CC(prj, ft, _("library"))) == NULL)
 						{
-							return -1;
+							r = -1;
 						}
 						break;
 					default:
-						name = build_path(prj->directory, ft->name);
+						name = dup_filename(ft->name);
 						break;
 					}
-					fh = (int)Fopen(name, FO_READ);
-					if (fh <= 0)
+					if (r >= 0)
 					{
-						errout(_("%d>%s: Can't open %s"), level, program_name, name);
-						g_free(name);
-						return -1;
-					}
-					g_free(name);
-					Fdatime(&src_timestamp, fh, 0);
-					Fclose(fh);
-					if (older(&prg_timestamp, &src_timestamp))
-					{
-						if (prj->output_type != FT_PROJECT)
-							anycomp = 1;
-						break;
+						fh = (int)Fopen(name, FO_READ);
+						if (fh <= 0)
+						{
+							errout(_("%d>%s: Can't open %s"), level, program_name, name);
+							g_free(name);
+							r = -1;
+						} else
+						{
+							g_free(name);
+							Fdatime(&src_timestamp, fh, 0);
+							Fclose(fh);
+							if (older(&prg_timestamp, &src_timestamp))
+							{
+								if (prj->output_type != FT_PROJECT)
+									anycomp = 1;
+								break;
+							}
+						}
 					}
 				}
 			}
 		}
 	}
 	
-	if (anycomp > 0 && prj->output_type != FT_PROJECT)
+	if (r < 0)
+	{
+		anycomp = r;
+	} else if (anycomp > 0 && prj->output_type != FT_PROJECT)
 	{
 		if (dold(prj, opts) == false)						/* run the loader */
 			anycomp = -1;
 	}
 	
+	ch_dir(curdir);
+	g_free(curdir);
+	
 	return anycomp;
 }
 
 
-static void clear_dates(PRJ *prj, int level)
+static int clear_dates(PRJ *prj, int level)
 {
 	filearg *ft;
+	char *curdir;
+	int r = 0;
+	
+	curdir = get_cwd();
+	if (ch_dir(prj->directory) < 0)
+	{
+		errout(_("%s: cannot chdir to %s"), program_name, prj->directory);
+		r = -1;
+	}
 
-	for (ft = prj->inputs; ft; ft = ft->next)
+	for (ft = prj->inputs; ft && r >= 0; ft = ft->next)
 	{
 		switch (ft->filetype)
 		{
@@ -958,12 +1017,17 @@ static void clear_dates(PRJ *prj, int level)
 			touch(prj, ft);
 			break;
 		case FT_PROJECT:
-			clear_dates(ft->u.prj, level + 1);
+			r = clear_dates(ft->u.prj, level + 1);
 			break;
 		default:
 			break;
 		}
 	}
+
+	ch_dir(curdir);
+	g_free(curdir);
+	
+	return r;
 }
 
 
@@ -1066,9 +1130,11 @@ static PRJ *load_prj(MAKEOPTS *opts, const char *f, int level)
 	PRJ *prj;
 	filearg *keep;
 	
-	if ((fp = fopen(f, "r")) == NULL)
+	s = dup_filename(f);
+	if ((fp = fopen(s, "r")) == NULL)
 	{
 		errout(_("%d>Can't open project file: %s"), level, f);
+		g_free(s);
 		return NULL;
 	}
 
@@ -1076,12 +1142,13 @@ static PRJ *load_prj(MAKEOPTS *opts, const char *f, int level)
 	if (prj == NULL)
 	{
 		fclose(fp);
+		g_free(s);
 		return NULL;
 	}
 	init_cflags(&prj->c_flags);
 	init_ldflags(&prj->ld_flags);
 
-	prj->filename = g_strdup(f);
+	prj->filename = s;
 	prj->directory = dirname(f);
 	prj->inputs = NULL;
 	prj->output = NULL;
@@ -1175,7 +1242,7 @@ static PRJ *load_prj(MAKEOPTS *opts, const char *f, int level)
 
 				skipwhite(&s);
 				fnm = parse_filename(&s);
-				ps = build_path(prj->directory, fnm);
+				ps = dup_filename(fnm);
 				
 				if (firstfile)
 				{
@@ -1219,9 +1286,7 @@ static PRJ *load_prj(MAKEOPTS *opts, const char *f, int level)
 								fnm = parse_filename(&s);
 								if (fnm && fnm[0])
 								{
-									ps = build_path(prj->directory, fnm);
-									list_append(&keep->dependencies, ps);
-									g_free(ps);
+									list_append(&keep->dependencies, fnm);
 								}
 								g_free(fnm);
 								if (skipwhite(&s) != ',')
@@ -1262,9 +1327,7 @@ static PRJ *load_prj(MAKEOPTS *opts, const char *f, int level)
 						/* nested project */
 						if (keep->filetype == FT_PROJECT)
 						{
-							char *name = build_path(prj->directory, keep->name);
-							keep->u.prj = load_prj(opts, name, level + 1);
-							g_free(name);
+							keep->u.prj = load_prj(opts, keep->name, level + 1);
 							if (keep->u.prj == NULL)
 								retval = false;
 						}
