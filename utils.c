@@ -284,7 +284,12 @@ char *build_path(const char *dir, const char *fname)
 	char *name;
 	
 	if (fname && is_absolute_path(fname))
-		return g_strdup(fname);
+	{
+		name = g_strdup(fname);
+		if (name)
+			strbslash(name);
+		return name;
+	}
 	dirlen = strlen(dir);
 	fnamelen = fname ? strlen(fname) : 0;
 	name = g_new(char, dirlen + 1 + fnamelen + 1);
@@ -357,6 +362,7 @@ int ch_dir(const char *path)
 {
 	int r = 0;
 	int drv;
+	char *tmp;
 	
 	if (path == NULL)
 		return -ENOENT;
@@ -374,7 +380,16 @@ int ch_dir(const char *path)
 	}
 	if (path[0] != '\0')
 	{
-		r = (int)Dsetpath(path);
+		tmp = g_strdup(path);
+		if (tmp == NULL)
+		{
+			r = -39;
+		} else
+		{
+			strbslash(tmp);
+			r = (int)Dsetpath(tmp);
+			g_free(tmp);
+		}
 	}
 	return r;
 }
