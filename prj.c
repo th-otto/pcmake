@@ -240,7 +240,9 @@ static filearg *keepfile(PRJ *prj, const char *f)
 	case FT_ASSOURCE:
 		entry = putflist(&prj->inputs, f, ftype);
 		if (entry)
+		{
 			entry->u.cflags = copy_cflags(&prj->c_flags);
+		}
 		break;
 	case FT_OBJECT:
 		entry = putflist(&prj->inputs, f, ftype);
@@ -1260,6 +1262,33 @@ static PRJ *load_prj(MAKEOPTS *opts, const char *f, int level)
 					retval = false;
 				} else
 				{
+					const char *opt;
+					
+					if ((opt = getenv("PCCFLAGS")) != NULL)
+					{
+						if (parse_cc_options(opt, &prj->c_flags) == false)
+						{
+							errout(_("%s: Illegal option specification: %s"), Error, opt);
+							retval = false;
+						}
+					}
+					if ((opt = getenv("PCASFLAGS")) != NULL)
+					{
+						if (parse_as_options(opt, &prj->c_flags) == false)
+						{
+							errout(_("%s: Illegal option specification: %s"), Error, opt);
+							retval = false;
+						}
+					}
+					if ((opt = getenv("PCLDFLAGS")) != NULL)
+					{
+						if (parse_ld_options(opt, &prj->ld_flags) == false)
+						{
+							errout(_("%s: Illegal option specification: %ss"), Error, opt);
+							retval = false;
+						}
+					}
+
 					/* TODO what if no output file in project?
 					   i think PureC uses name of project file in this case */
 					section++;
