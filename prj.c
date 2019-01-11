@@ -475,7 +475,7 @@ static void add_optarg(int *argc, char ***argv, const char *sw, const char *arg)
 
 
 /* called by docomp() */
-static void prj_params(const C_FLAGS *cflags, int *argc, char ***argv)
+static void prj_params(const C_FLAGS *cflags, int *argc, char ***argv, bool is_asm)
 {
 	const strlist *str;
 	
@@ -489,7 +489,7 @@ static void prj_params(const C_FLAGS *cflags, int *argc, char ***argv)
 		add_optarg(argc, argv, "-U", str->str);
 	}
 
-	for (str = cflags->includes; str != NULL; str = str->next)
+	for (str = is_asm ? cflags->as_includes : cflags->c_includes; str != NULL; str = str->next)
 	{
 		add_optarg(argc, argv, "-I", str->str);
 	}
@@ -630,7 +630,7 @@ static int docomp(PRJ *prj, MAKEOPTS *opts, filearg *ft)
 	}
 #endif
 
-	prj_params(cflags, &argc, &argv);
+	prj_params(cflags, &argc, &argv, is_asm);
 	if (!is_asm)
 		add_optarg(&argc, &argv, "-I", get_includedir());
 	

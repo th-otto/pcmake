@@ -65,7 +65,8 @@ typedef struct _cflags {
 	
     strlist *defines;
     strlist *undefines;
-    strlist *includes;
+    strlist *c_includes;
+    strlist *as_includes;
 } C_FLAGS;
 
 typedef struct
@@ -153,7 +154,7 @@ extern bool errout_nfdebug;
 
 
 void adddef(C_FLAGS *flg, const char *str);
-void doincl(C_FLAGS *flg, const char *str);
+void doincl(C_FLAGS *flg, const char *str, strlist **includes);
 
 void errout_va(const char *format, va_list args) __attribute__((format(printf, 1, 0)));
 void errout(const char *format, ...) __attribute__((format(printf, 1, 2)));

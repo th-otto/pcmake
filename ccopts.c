@@ -172,7 +172,8 @@ void init_cflags(C_FLAGS *flg)
 	flg->Coldfire = false;
 	flg->defines = NULL;
 	flg->undefines = NULL;
-	flg->includes = NULL;
+	flg->c_includes = NULL;
+	flg->as_includes = NULL;
 	
 	flg->warning_level = DEFAULT_WARNINGLEVEL;
 	for (i = 0; i < WARN_MAX; i++)
@@ -196,7 +197,8 @@ void free_cflags(C_FLAGS *c_flags)
 {
 	list_free(&c_flags->defines);
 	list_free(&c_flags->undefines);
-	list_free(&c_flags->includes);
+	list_free(&c_flags->c_includes);
+	list_free(&c_flags->as_includes);
 }
 
 
@@ -212,12 +214,13 @@ static void subdef(C_FLAGS *cflags, const char *s)
 }
 
 
-void doincl(C_FLAGS *cflags, const char *s)				/* optincl */
+void doincl(C_FLAGS *cflags, const char *s, strlist **includes)				/* optincl */
 {
 	char *buf;
 	char *pt;
 	char *dir;
 
+	(void)cflags;
 	buf = g_new(char, strlen(s) + 2);
 	if (buf == NULL)
 		return;
@@ -241,7 +244,7 @@ void doincl(C_FLAGS *cflags, const char *s)				/* optincl */
 		
 		dir = build_path(pt, NULL);
 
-		for (old = cflags->includes; old != NULL; old = old->next)
+		for (old = *includes; old != NULL; old = old->next)
 			if (stricmp(old->str, dir) == 0)
 			{
 				dir[0] = '\0';
@@ -250,7 +253,7 @@ void doincl(C_FLAGS *cflags, const char *s)				/* optincl */
 
 		if (dir[0] != '\0')
 		{
-			list_append(&cflags->includes, dir);
+			list_append(includes, dir);
 		}
 		g_free(dir);
 		
@@ -559,7 +562,7 @@ static bool parse_cflags(int argc, const char **argv, C_FLAGS *flg, int *poptind
 			break;
 		case 'i':
 		case 'I':
-			doincl(flg, xgetopt_arg_r(opts));
+			doincl(flg, xgetopt_arg_r(opts), &flg->c_includes);
 			break;
 		case 'K' + 256:
 			flg->char_is_unsigned = false;
@@ -643,7 +646,8 @@ C_FLAGS *copy_cflags(const C_FLAGS *src)
 		dst->output_name = NULL;
 		dst->defines = list_copy(src->defines);
 		dst->undefines = list_copy(src->undefines);
-		dst->includes = list_copy(src->includes);
+		dst->c_includes = list_copy(src->c_includes);
+		dst->as_includes = list_copy(src->as_includes);
 	}
 	return dst;
 }

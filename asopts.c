@@ -186,7 +186,7 @@ static bool parse_asflags(int argc, const char **argv, C_FLAGS *flg, int *poptin
 			break;
 		case 'i':
 		case 'I':
-			doincl(flg, xgetopt_arg_r(opts));
+			doincl(flg, xgetopt_arg_r(opts), &flg->as_includes);
 			break;
 		case 'n':
 		case 'N':
