@@ -171,6 +171,7 @@ char *change_suffix(const char *filename, const char *ext);
 bool file_exists(const char *f);
 char *dirname(const char *f);
 void strbslash(char *str);
+char *get_cwd(void);
 int ch_dir(const char *path);
 
 

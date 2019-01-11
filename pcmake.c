@@ -239,11 +239,15 @@ int main(int argc, const char **argv)
 		}
 		if (err == EXIT_SUCCESS)
 		{
-			prj = loadmake(&makeopts, prj_name);
+			char *dir = get_cwd();
+			char *name = build_path(dir, prj_name);
+			prj = loadmake(&makeopts, name);
 			if (prj == NULL)
 			{
 				err = EXIT_FAILURE;
 			}
+			g_free(name);
+			g_free(dir);
 		}
 		if (err == EXIT_SUCCESS)
 		{

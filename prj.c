@@ -129,7 +129,7 @@ static char *parse_filename(char **ln)
 
 /* ---------------------------------------------------------------------- */
 
-static char *get_cwd(void)
+char *get_cwd(void)
 {
 	char path[1024];
 	int drv;
@@ -1357,7 +1357,9 @@ static PRJ *load_prj(MAKEOPTS *opts, const char *f, int level)
 						/* nested project */
 						if (keep->filetype == FT_PROJECT)
 						{
-							keep->u.prj = load_prj(opts, keep->name, level + 1);
+							ps = build_path(prj->directory, keep->name);
+							keep->u.prj = load_prj(opts, ps, level + 1);
+							g_free(ps);
 							if (keep->u.prj == NULL)
 								retval = false;
 						}
