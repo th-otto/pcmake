@@ -874,7 +874,7 @@ static bool dold(PRJ *prj, MAKEOPTS *opts)
 		rep = linker(argc, (const char **)argv);
 		if (rep)
 		{
-			errout(_("linker failed: %d"), rep);
+			errout(_("%s: linking failed: %d"), prj->filename, rep);
 			if (prj->output_type != FT_PROJECT)
 				remove_output(prj->output);
 		}

@@ -205,11 +205,54 @@ void free_cflags(C_FLAGS *c_flags)
 void adddef(C_FLAGS *cflags, const char *ns)
 {
 	strlist *entry;
+	const char *equal;
+	size_t len1, len2;
 	
+	equal = strchr(ns, '=');
+	if (equal)
+		len1 = equal - ns;
+	else
+		len1 = 0;
 	for (entry = cflags->defines; entry != NULL; entry = entry->next)
 	{
+		/*
+		 * simply ignore duplicate definitions;
+		 * happens if we pass some definition on the
+		 * command line that is also part of the project file
+		 */
 		if (strcmp(entry->str, ns) == 0)
 			return;
+		/*
+		 * now check if overriding an already existing
+		 * definition with a different value
+		 */
+		if (len1 != 0)
+		{
+			equal = strchr(entry->str, '=');
+			if (equal)
+			{
+				len2 = equal - entry->str;
+				if (len1 == len2 && strncmp(entry->str, ns, len1) == 0)
+				{
+					/*
+					 * if new string fits in old entry,
+					 * just overwrite it
+					 */
+					len1 = strlen(ns);
+					len2 = strlen(entry->str);
+					if (len1 <= len2)
+					{
+						strcpy(entry->str, ns);
+						return;
+					}
+					/*
+					 * no such luck. Just append the new definition, and let
+					 * the compiler handle it
+					 */
+					break;
+				}
+			}
+		}
 	}
 	list_append(&cflags->defines, ns);
 }

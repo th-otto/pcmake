@@ -121,6 +121,7 @@ int main(int argc, const char **argv)
 	static DTA dta;
 	Fsetdta(&dta);
 	Pdomain(1);
+	_mallocChunkSize(0);
 #endif
 	set_pcdir(argv[0]);
 #if 0
