@@ -884,6 +884,31 @@ static bool dold(PRJ *prj, MAKEOPTS *opts)
 }
 
 
+static int clear_dates(PRJ *prj, int level)
+{
+	filearg *ft;
+	int r = 0;
+	
+	for (ft = prj->inputs; ft && r >= 0; ft = ft->next)
+	{
+		switch (ft->filetype)
+		{
+		case FT_CSOURCE:
+		case FT_ASSOURCE:
+			touch(prj, ft);
+			break;
+		case FT_PROJECT:
+			r = clear_dates(ft->u.prj, level + 1);
+			break;
+		default:
+			break;
+		}
+	}
+
+	return r;
+}
+
+
 static int make_prj(PRJ *prj, MAKEOPTS *opts, int level)
 {
 	int r;
@@ -908,6 +933,16 @@ static int make_prj(PRJ *prj, MAKEOPTS *opts, int level)
 		}
 	}
 
+	if (opts->make_all)
+	{
+		/*
+		 * we will ignore timestamps on this run,
+		 * but it might still be useful to clear the dates
+		 * in case the shell is restarted
+		 */
+		r = clear_dates(prj, level);
+	}
+	
 	for (ft = prj->inputs; ft && r >= 0; ft = ft->next)
 	{
 		if (ft->filetype == FT_CSOURCE || ft->filetype == FT_ASSOURCE)
@@ -1019,42 +1054,6 @@ static int make_prj(PRJ *prj, MAKEOPTS *opts, int level)
 	g_free(curdir);
 	
 	return anycomp;
-}
-
-
-static int clear_dates(PRJ *prj, int level)
-{
-	filearg *ft;
-	char *curdir;
-	int r = 0;
-	
-	curdir = get_cwd();
-	if (ch_dir(prj->directory) < 0)
-	{
-		errout(_("%s: cannot chdir to %s"), program_name, prj->directory);
-		r = -1;
-	}
-
-	for (ft = prj->inputs; ft && r >= 0; ft = ft->next)
-	{
-		switch (ft->filetype)
-		{
-		case FT_CSOURCE:
-		case FT_ASSOURCE:
-			touch(prj, ft);
-			break;
-		case FT_PROJECT:
-			r = clear_dates(ft->u.prj, level + 1);
-			break;
-		default:
-			break;
-		}
-	}
-
-	ch_dir(curdir);
-	g_free(curdir);
-	
-	return r;
 }
 
 
