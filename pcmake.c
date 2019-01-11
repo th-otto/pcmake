@@ -241,7 +241,38 @@ int main(int argc, const char **argv)
 		{
 			prj = loadmake(&makeopts, prj_name);
 			if (prj == NULL)
+			{
 				err = EXIT_FAILURE;
+			}
+		}
+		if (err == EXIT_SUCCESS)
+		{
+			const char *opt;
+			
+			if ((opt = getenv("PCCFLAGS")) != NULL)
+			{
+				if (parse_cc_options(opt, &prj->c_flags) == false)
+				{
+					errout(_("%s: Illegal option specification: %s"), Error, opt);
+					err = EXIT_FAILURE;
+				}
+			}
+			if ((opt = getenv("PCASFLAGS")) != NULL)
+			{
+				if (parse_as_options(opt, &prj->c_flags) == false)
+				{
+					errout(_("%s: Illegal option specification: %s"), Error, opt);
+					err = EXIT_FAILURE;
+				}
+			}
+			if ((opt = getenv("PCLDFLAGS")) != NULL)
+			{
+				if (parse_ld_options(opt, &prj->ld_flags) == false)
+				{
+					errout(_("%s: Illegal option specification: %ss"), Error, opt);
+					err = EXIT_FAILURE;
+				}
+			}
 		}
 		if (err == EXIT_SUCCESS)
 		{
