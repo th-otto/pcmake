@@ -31,10 +31,13 @@ enum opt {
 	OPT_DRYRUN =          'n',
 	OPT_OLD_FILE =        'o',
 	OPT_TOUCH =           't',
+	OPT_PRINT_DIRECTORY = 'w',
 	OPT_WHATIF =          'W',
 	OPT_NFDEBUG =         'F',
 	OPT_HELP =            'h',
 	OPT_VERSION =         'V',
+	
+	OPT_NO_PRINT_DIRECTORY = 256,
 };
 
 char const program_name[] = "pcmake";
@@ -68,6 +71,8 @@ static struct option const long_options[] = {
 	{ "directory", required_argument, NULL, OPT_CHANGEDIR },
 	{ "old-file", required_argument, NULL, OPT_OLD_FILE },
 	{ "natfeat-debug", no_argument, NULL, OPT_NFDEBUG },
+	{ "no-print-directory", no_argument, NULL, OPT_NO_PRINT_DIRECTORY },
+	{ "print-directory", no_argument, NULL, OPT_PRINT_DIRECTORY },
 	{ "help", no_argument, NULL, OPT_HELP },
 	{ "version", no_argument, NULL, OPT_VERSION },
 	
@@ -87,6 +92,8 @@ static void print_usage(bool to_stderr)
 	fprintf(fp, _("  -f, --file=FILE          Read FILE as a project file.\n"));
 	fprintf(fp, _("  -s, --silent             Don't echo commands.\n"));
 	fprintf(fp, _("  -v, --verbose            Increase verbosity.\n"));
+	fprintf(fp, _("  -w, --print-directory    Print the current directory.\n"));
+	fprintf(fp, _("      --no-print-directory Turn off -w, even if it was turned on implicitly.\n"));
 	fprintf(fp, _("  -V, --version            Print the version number and exit.\n"));
 	fprintf(fp, _("  -h, --help               Display this help and exit.\n"));
 }
@@ -132,10 +139,11 @@ int main(int argc, const char **argv)
 	makeopts.silent = false;
 	makeopts.debug = false;
 	makeopts.nfdebug = false;
+	makeopts.print_directory = true;
 	makeopts.directory = NULL;
 	prj_name = NULL;
 	
-	while ((c = getopt_long_only_r(argc, argv, "BC:FW:d::ef:ij::kno:qstvhV", long_options, NULL, opts)) != EOF)
+	while ((c = getopt_long_only_r(argc, argv, "BC:FW:d::ef:ij::kno:qstvwhV", long_options, NULL, opts)) != EOF)
 	{
 		switch (c)
 		{
@@ -163,7 +171,13 @@ int main(int argc, const char **argv)
 		case OPT_MAKEFILE:
 			prj_name = getopt_arg_r(opts);
 			break;
-		
+		case OPT_PRINT_DIRECTORY:
+			makeopts.print_directory = true;
+			break;
+		case OPT_NO_PRINT_DIRECTORY:
+			makeopts.print_directory = false;
+			break;
+
 		case OPT_QUESTION:
 		case OPT_JOBS:
 		case OPT_KEEP_GOING:
@@ -208,6 +222,8 @@ int main(int argc, const char **argv)
 		err = EXIT_FAILURE;
 	} else
 	{
+		errout_nfdebug = makeopts.nfdebug;
+
 		if (prj_name == NULL)
 			prj_name = argv[0];
 		

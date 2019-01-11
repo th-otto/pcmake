@@ -900,6 +900,12 @@ static int make_prj(PRJ *prj, MAKEOPTS *opts, int level)
 	{
 		errout(_("%s: cannot chdir to %s"), program_name, prj->directory);
 		r = -1;
+	} else
+	{
+		if (!opts->silent && opts->print_directory)
+		{
+			errout(_("%s: entering directory %s"), program_name, prj->directory);
+		}
 	}
 
 	for (ft = prj->inputs; ft && r >= 0; ft = ft->next)

@@ -136,6 +136,7 @@ typedef struct _makeopts {
 	bool silent;
 	bool debug;
 	bool nfdebug;
+	bool print_directory;
 	char *directory;
 } MAKEOPTS;
 
@@ -148,6 +149,7 @@ extern char const Warning[];
 extern char const Error[];
 extern char const suff_o[];
 extern char const suff_prg[];
+extern bool errout_nfdebug;
 
 
 void adddef(C_FLAGS *flg, const char *str);

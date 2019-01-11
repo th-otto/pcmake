@@ -10,12 +10,14 @@
 #include <tos.h>
 #endif
 #endif
+#include <mint/arch/nf_ops.h>
 #include "pcmake.h"
 
 char const Warning[] = N_("warning");
 char const Error[] = N_("error");
 char const suff_o[] = ".o";
 char const suff_prg[] = ".prg";
+bool errout_nfdebug;
 
 #define bslash '\\'
 #define fslash '/'
@@ -27,6 +29,11 @@ void errout_va(const char *format, va_list args)
 {
 	vfprintf(stderr, format, args);
 	fputc('\n', stderr);
+	if (errout_nfdebug)
+	{
+		nf_debugvprintf(format, args);
+		nf_debug("\n");
+	}
 }
 
 /* ---------------------------------------------------------------------- */
