@@ -246,6 +246,8 @@ FTY filetype(const char *filename)
 		findupsuf(suf, ".ttp") ||
 		findupsuf(suf, ".tos") ||
 		findupsuf(suf, ".gtp") ||
+		findupsuf(suf, ".cpx") ||
+		findupsuf(suf, ".cp") ||
 		findupsuf(suf, ".acc"))
 		return FT_PROGRAM;
 	if (findupsuf(suf, ".c"))

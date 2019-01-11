@@ -255,7 +255,6 @@ int main(int argc, const char **argv)
 			
 			if ((opt = getenv("PCCFLAGS")) != NULL)
 			{
-				printf("PCCFLAGS=%s\n", opt);
 				if (parse_cc_options(opt, &prj->c_flags) == false)
 				{
 					errout(_("%s: Illegal option specification: %s"), Error, opt);

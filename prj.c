@@ -1287,7 +1287,7 @@ static PRJ *load_prj(MAKEOPTS *opts, const char *f, int level)
 						/* TODO: replace "*.PRG" in filename with editor filename, for DEFAULT.PRJ */
 						prj->output = ps;
 						prj->output_type = filetype(prj->output);
-						if (prj->output_type == FT_NONE)
+						if (prj->output_type == FT_UNKNOWN)
 							prj->output_type = FT_PROGRAM;
 						g_free(fnm);
 						continue;
