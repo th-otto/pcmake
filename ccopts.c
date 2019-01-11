@@ -204,6 +204,13 @@ void free_cflags(C_FLAGS *c_flags)
 
 void adddef(C_FLAGS *cflags, const char *ns)
 {
+	strlist *entry;
+	
+	for (entry = cflags->defines; entry != NULL; entry = entry->next)
+	{
+		if (strcmp(entry->str, ns) == 0)
+			return;
+	}
 	list_append(&cflags->defines, ns);
 }
 
