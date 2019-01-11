@@ -134,6 +134,8 @@ typedef struct _makeopts {
 	int verbose;
 	bool ignore_date;
 	bool silent;
+	bool debug;
+	bool nfdebug;
 	char *directory;
 } MAKEOPTS;
 

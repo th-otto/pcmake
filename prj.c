@@ -11,6 +11,7 @@
 #include <tos.h>
 #endif
 #endif
+#include <mint/arch/nf_ops.h>
 #include "pcmake.h"
 #  ifndef CLK_TCK
 #   define CLK_TCK	CLOCKS_PER_SEC
@@ -655,6 +656,16 @@ static int docomp(PRJ *prj, MAKEOPTS *opts, filearg *ft)
 		for (i = 1; i < argc; i++)
 			fprintf(stdout, " %s", argv[i]);
 		fprintf(stdout, "\n");
+		if (opts->nfdebug)
+		{
+			nf_debug(argv[0]);
+			for (i = 1; i < argc; i++)
+			{
+				nf_debug(" ");
+				nf_debug(argv[i]);
+			}
+			nf_debug("\n");
+		}
 	}
 	g_free(output_name);
 
@@ -846,6 +857,16 @@ static bool dold(PRJ *prj, MAKEOPTS *opts)
 			for (i = 1; i < argc; i++)
 				fprintf(stdout, " %s", argv[i]);
 			fprintf(stdout, "\n");
+			if (opts->nfdebug)
+			{
+				nf_debug(argv[0]);
+				for (i = 1; i < argc; i++)
+				{
+					nf_debug(" ");
+					nf_debug(argv[i]);
+				}
+				nf_debug("\n");
+			}
 		}
 		
 		rep = linker(argc, (const char **)argv);
@@ -1033,7 +1054,6 @@ static int clear_dates(PRJ *prj, int level)
 
 bool domake(PRJ *prj, MAKEOPTS *opts)
 {
-	unsigned long cmins, csecs, secs;
 	int anycomp;
 
 	memset(&stats, 0, sizeof(stats));
@@ -1065,8 +1085,11 @@ bool domake(PRJ *prj, MAKEOPTS *opts)
 	}
 
 	stats.end = clock();
+#if 0
 	if (opts->make_all)
 	{
+		unsigned long cmins, csecs, secs;
+
 		stats.time = stats.end - stats.start;
 		csecs = stats.time / CLK_TCK;
 		cmins = csecs / 60;
@@ -1093,6 +1116,7 @@ bool domake(PRJ *prj, MAKEOPTS *opts)
 		}
 #endif
 	}
+#endif
 	return true;
 }
 

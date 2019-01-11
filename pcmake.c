@@ -12,6 +12,7 @@
 #include <tos.h>
 #endif
 #endif
+#include <mint/arch/nf_ops.h>
 #include "getopt.h"
 #include "pcmake.h"
 
@@ -20,6 +21,18 @@ enum opt {
 	OPT_VERBOSE =         'v',
 	OPT_SILENT =          's',
 	OPT_CHANGEDIR =       'C',
+	OPT_QUESTION =        'q',
+	OPT_DEBUG =           'd',
+	OPT_ENVIRON =         'e',
+	OPT_JOBS =            'j',
+	OPT_MAKEFILE =        'f',
+	OPT_KEEP_GOING =      'k',
+	OPT_IGNORE_ERRORS =   'i',
+	OPT_DRYRUN =          'n',
+	OPT_OLD_FILE =        'o',
+	OPT_TOUCH =           't',
+	OPT_WHATIF =          'W',
+	OPT_NFDEBUG =         'F',
 	OPT_HELP =            'h',
 	OPT_VERSION =         'V',
 };
@@ -36,7 +49,25 @@ static struct option const long_options[] = {
 	{ "always-make", no_argument, NULL, OPT_ALL },
 	{ "verbose", no_argument, NULL, OPT_VERBOSE },
 	{ "silent", no_argument, NULL, OPT_SILENT },
+	{ "quiet", no_argument, NULL, OPT_SILENT },
+	{ "debug", optional_argument, NULL, OPT_DEBUG },
+	{ "environment-overrides", no_argument, NULL, OPT_ENVIRON },
+	{ "question", no_argument, NULL, OPT_QUESTION },
+	{ "keep-going", no_argument, NULL, OPT_KEEP_GOING },
+	{ "just-print", no_argument, NULL, OPT_DRYRUN },
+	{ "dry-run", no_argument, NULL, OPT_DRYRUN },
+	{ "recon", no_argument, NULL, OPT_DRYRUN },
+	{ "touch", no_argument, NULL, OPT_TOUCH },
+	{ "ignore-errors", no_argument, NULL, OPT_IGNORE_ERRORS },
+	{ "file", required_argument, NULL, OPT_MAKEFILE },
+	{ "makefile", required_argument, NULL, OPT_MAKEFILE },
+	{ "what-if", required_argument, NULL, OPT_WHATIF },
+	{ "new-file", required_argument, NULL, OPT_WHATIF },
+	{ "assume-new", required_argument, NULL, OPT_WHATIF },
+	{ "jobs", optional_argument, NULL, OPT_JOBS },
 	{ "directory", required_argument, NULL, OPT_CHANGEDIR },
+	{ "old-file", required_argument, NULL, OPT_OLD_FILE },
+	{ "natfeat-debug", no_argument, NULL, OPT_NFDEBUG },
 	{ "help", no_argument, NULL, OPT_HELP },
 	{ "version", no_argument, NULL, OPT_VERSION },
 	
@@ -50,6 +81,14 @@ static void print_usage(bool to_stderr)
 	
 	fp = to_stderr ? stderr : stdout;
 	fprintf(fp, _("usage: %s [options] <project-file>\n"), program_name);
+	fprintf(fp, _("options:\n"));
+	fprintf(fp, _("  -B, --always-make        Unconditionally make all targets.\n"));
+	fprintf(fp, _("  -C, --directory=DIR      Change to DIRECTORY before doing anything.\n"));
+	fprintf(fp, _("  -f, --file=FILE          Read FILE as a project file.\n"));
+	fprintf(fp, _("  -s, --silent             Don't echo commands.\n"));
+	fprintf(fp, _("  -v, --verbose            Increase verbosity.\n"));
+	fprintf(fp, _("  -V, --version            Print the version number and exit.\n"));
+	fprintf(fp, _("  -h, --help               Display this help and exit.\n"));
 }
 
 
@@ -69,6 +108,7 @@ int main(int argc, const char **argv)
 	int opti;
 	int err = EXIT_SUCCESS;
 	PRJ *prj = NULL;
+	const char *prj_name;
 	
 #if defined(__TOS__) || defined(__atarist__)
 	static DTA dta;
@@ -90,9 +130,12 @@ int main(int argc, const char **argv)
 	makeopts.ignore_date = false;
 	makeopts.verbose = 0;
 	makeopts.silent = false;
+	makeopts.debug = false;
+	makeopts.nfdebug = false;
 	makeopts.directory = NULL;
+	prj_name = NULL;
 	
-	while ((c = getopt_long_only_r(argc, argv, "C:svBhV", long_options, NULL, opts)) != EOF)
+	while ((c = getopt_long_only_r(argc, argv, "BC:FW:d::ef:ij::kno:qstvhV", long_options, NULL, opts)) != EOF)
 	{
 		switch (c)
 		{
@@ -110,6 +153,27 @@ int main(int argc, const char **argv)
 			g_free(makeopts.directory);
 			makeopts.directory = g_strdup(getopt_arg_r(opts));
 			strbslash(makeopts.directory);
+			break;
+		case OPT_DEBUG:
+			makeopts.debug = true;
+			break;
+		case OPT_NFDEBUG:
+			makeopts.nfdebug = true;
+			break;
+		case OPT_MAKEFILE:
+			prj_name = getopt_arg_r(opts);
+			break;
+		
+		case OPT_QUESTION:
+		case OPT_JOBS:
+		case OPT_KEEP_GOING:
+		case OPT_ENVIRON:
+		case OPT_DRYRUN:
+		case OPT_TOUCH:
+		case OPT_WHATIF:
+		case OPT_OLD_FILE:
+			errout(_("NYI: -%c"), c);
+			err = EXIT_FAILURE;
 			break;
 		
 		case OPT_HELP:
@@ -138,13 +202,14 @@ int main(int argc, const char **argv)
 	} else if (show_help)
 	{
 		print_usage(false);
-	} else if (argc != 1)
+	} else if (prj_name == NULL && argc != 1)
 	{
 		print_usage(true);
 		err = EXIT_FAILURE;
 	} else
 	{
-		const char *prj_name = argv[0];
+		if (prj_name == NULL)
+			prj_name = argv[0];
 		
 		if (makeopts.directory)
 		{
