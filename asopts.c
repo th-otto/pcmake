@@ -199,6 +199,7 @@ static bool parse_asflags(int argc, const char **argv, C_FLAGS *flg, int *poptin
 			flg->output_name = g_strdup(xgetopt_arg_r(opts));
 			break;
 		case 'v':
+		case 'V':
 			flg->verbose += 1;		/* number of v's = level of verbosity */
 			break;
 		case 'w':
@@ -249,7 +250,7 @@ static void print_usage(C_FLAGS *flg, bool to_stderr)
 	fprintf(fp, _("-P, --print-listing         Print a listing                     (%s)\n"), ON(flg->print_listing));
 	fprintf(fp, _("-S, --msuper                Privileged instructions             (%s)\n"), ON(flg->supervisor));
 	fprintf(fp, _("-U, --fundefined-external   Undefined symbols external          (%s)\n"), ON(flg->undefined_external));
-	fprintf(fp, _("-v, --verbose               verbosity                           (%d)\n"), flg->verbose);
+	fprintf(fp, _("-V, --verbose               Verbose message output              (%d)\n"), flg->verbose);
 	fprintf(fp, _("-Y, --debug                 generate debug information          (%s)\n"), ON(flg->debug_infos));
 	fprintf(fp, _("-2, --m68020                generate for MC68020+               (%s)\n"), ON(flg->i2_68020));
 	fprintf(fp, _("-3, --m68030                generate for MC68030+               (%s)\n"), ON(flg->i2_68030));

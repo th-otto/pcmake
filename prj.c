@@ -1154,7 +1154,6 @@ static PRJ *load_prj(MAKEOPTS *opts, const char *f, int level)
 	FILE *fp;
 	char st[1024];
 	char *s;
-	bool firstfile = true;
 	int section = 0;
 	long lineno;
 	bool retval = true;
@@ -1293,7 +1292,6 @@ static PRJ *load_prj(MAKEOPTS *opts, const char *f, int level)
 					   i think PureC uses name of project file in this case */
 					section++;
 				}
-				firstfile = true;
 			} else if (c != 0 && c != '=')
 			{
 				char *ps, *fnm;
@@ -1302,27 +1300,23 @@ static PRJ *load_prj(MAKEOPTS *opts, const char *f, int level)
 				fnm = parse_filename(&s);
 				ps = dup_filename(fnm);
 				
-				if (firstfile)
+				if (section == 0)
 				{
-					firstfile = false;
-					if (section == 0)
+					if (prj->output)
 					{
-						if (prj->output)
-						{
-							errout(_("%s: duplicate output file '%s'"), program_name, ps);
-							g_free(ps);
-							return FT_UNKNOWN;
-						}
-						/* TODO: replace "*.PRG" in filename with editor filename, for DEFAULT.PRJ */
-						prj->output = ps;
-						prj->output_type = filetype(prj->output);
-						if (prj->output_type == FT_UNKNOWN)
-							prj->output_type = FT_PROGRAM;
-						g_free(fnm);
-						continue;
+						errout(_("%s: duplicate output file '%s'"), program_name, ps);
+						g_free(ps);
+						return FT_UNKNOWN;
 					}
+					/* TODO: replace "*.PRG" in filename with editor filename, for DEFAULT.PRJ */
+					prj->output = ps;
+					prj->output_type = filetype(prj->output);
+					if (prj->output_type == FT_UNKNOWN)
+						prj->output_type = FT_PROGRAM;
+					g_free(fnm);
+					continue;
 				}
-				
+			
 				keep = keepfile(prj, fnm);
 				g_free(fnm);
 				if (keep == NULL || keep->filetype == FT_UNKNOWN)

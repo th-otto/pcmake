@@ -644,6 +644,7 @@ static bool parse_cflags(int argc, const char **argv, C_FLAGS *flg, int *poptind
 			subdef(flg, xgetopt_arg_r(opts));					/* 3'91 v1.2 */
 			break;
 		case 'v':
+		case 'V':
 			flg->verbose += 1;		/* number of v's = level of verbosity */
 			break;
 		case 'w':
