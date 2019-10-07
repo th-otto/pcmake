@@ -233,7 +233,7 @@ static bool findupsuf(const char *suf, const char *s)
 }
 
 
-FTY filetype(const char *filename)
+FILETYPE filetype(const char *filename)
 {
 	const char *suf;
 	

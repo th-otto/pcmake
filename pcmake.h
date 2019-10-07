@@ -4,8 +4,6 @@
 #include "warnings.h"
 #include "memdebug.h"
 
-#define MAX_PATHLEN 256
-
 #define DEFAULT_MAXERRS 25
 #define DEFAULT_MAXWARNS 50
 #define DEFAULT_IDLENGTH 32
@@ -13,8 +11,6 @@
 #define DEFAULT_WARNINGLEVEL MAX_WARNINGLEVEL
 #define MAX_IDLENGTH 254 /* limit through object file format; cannot easily be changed */
 #define DEFAULT_STACKSIZE 4096					/* default stacksize is Pure C compatible */
-
-typedef char S_path[MAX_PATHLEN];
 
 typedef struct _cflags {
 	bool strict_ANSI;			/* -A, Strict ANSI */
@@ -122,7 +118,7 @@ typedef enum
 	FT_SHAREDLIB = 'S',
 	FT_PROGRAM = 'p',
 	FT_PROJECT = 'P',
-} FTY;
+} FILETYPE;
 
 typedef struct project PRJ;
 
@@ -131,7 +127,7 @@ struct _filearg {
 	filearg *next;
 
 	strlist *dependencies;
-	FTY filetype;
+	FILETYPE filetype;
 	union {
 		C_FLAGS *cflags;
 		A_FLAGS *aflags;
@@ -149,7 +145,7 @@ struct project
 	A_FLAGS a_flags;
 	filearg *inputs;
 	char *output;
-	FTY output_type;
+	FILETYPE output_type;
 };
 
 typedef struct _makeopts {
@@ -188,7 +184,7 @@ void append_slash(char *s);
 char *strrslash(const char *f);
 char *basename(const char *f);
 bool is_absolute_path(const char *s);
-FTY filetype(const char *filename);
+FILETYPE filetype(const char *filename);
 char *build_path(const char *dir, const char *fname);
 char *change_suffix(const char *filename, const char *ext);
 bool file_exists(const char *f);

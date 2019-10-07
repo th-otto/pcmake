@@ -175,7 +175,7 @@ static bool inlist(filearg *list, const char *f)
 }
 
 
-static filearg *putflist(filearg **list, const char *f, FTY type)
+static filearg *putflist(filearg **list, const char *f, FILETYPE type)
 {
 	filearg *entry = NULL;
 	
@@ -203,7 +203,7 @@ static filearg *putflist(filearg **list, const char *f, FTY type)
  */
 static filearg *keepfile(PRJ *prj, const char *f)
 {
-	FTY ftype;
+	FILETYPE ftype;
 	filearg *entry = NULL;
 	
 	if (f == NULL)
@@ -750,7 +750,7 @@ static int docomp(PRJ *prj, MAKEOPTS *opts, filearg *ft)
 }
 
 
-static char *look_CC(PRJ *prj, filearg *ft, const char *msg)
+static char *lookup_object(PRJ *prj, filearg *ft, const char *msg)
 {
 	char *name;
 	bool found;
@@ -879,7 +879,7 @@ static bool dold(PRJ *prj, MAKEOPTS *opts)
 				g_free(name);
 				break;
 			case FT_OBJECT:
-				if ((name = look_CC(prj, ft, _("start up"))) == NULL)
+				if ((name = lookup_object(prj, ft, _("start up"))) == NULL)
 				{
 					rep = 1;
 				} else
@@ -889,7 +889,7 @@ static bool dold(PRJ *prj, MAKEOPTS *opts)
 				g_free(name);
 				break;
 			case FT_LIBRARY:
-				if ((name = look_CC(prj, ft, _("library"))) == NULL)
+				if ((name = lookup_object(prj, ft, _("library"))) == NULL)
 				{
 					rep = 1;
 				} else
@@ -1066,13 +1066,13 @@ static int make_prj(PRJ *prj, MAKEOPTS *opts, int level)
 						name = objname_for_src(prj, ft);
 						break;
 					case FT_OBJECT:
-						if ((name = look_CC(prj, ft, _("start up"))) == NULL)
+						if ((name = lookup_object(prj, ft, _("start up"))) == NULL)
 						{
 							r = -1;
 						}
 						break;
 					case FT_LIBRARY:
-						if ((name = look_CC(prj, ft, _("library"))) == NULL)
+						if ((name = lookup_object(prj, ft, _("library"))) == NULL)
 						{
 							r = -1;
 						}
