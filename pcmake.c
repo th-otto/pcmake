@@ -71,6 +71,7 @@ static struct option const long_options[] = {
 	{ "directory", required_argument, NULL, OPT_CHANGEDIR },
 	{ "old-file", required_argument, NULL, OPT_OLD_FILE },
 	{ "natfeat-debug", no_argument, NULL, OPT_NFDEBUG },
+	{ "nfdebug", no_argument, NULL, OPT_NFDEBUG },
 	{ "no-print-directory", no_argument, NULL, OPT_NO_PRINT_DIRECTORY },
 	{ "print-directory", no_argument, NULL, OPT_PRINT_DIRECTORY },
 	{ "help", no_argument, NULL, OPT_HELP },
@@ -92,6 +93,7 @@ static void print_usage(bool to_stderr)
 	fprintf(fp, _("  -f, --file=FILE          Read FILE as a project file.\n"));
 	fprintf(fp, _("  -s, --silent             Don't echo commands.\n"));
 	fprintf(fp, _("  -v, --verbose            Increase verbosity.\n"));
+	fprintf(fp, _("  -F, --nfdebug            Echo commands also to emulator, if present.\n"));
 	fprintf(fp, _("  -w, --print-directory    Print the current directory.\n"));
 	fprintf(fp, _("      --no-print-directory Turn off -w, even if it was turned on implicitly.\n"));
 	fprintf(fp, _("  -V, --version            Print the version number and exit.\n"));
