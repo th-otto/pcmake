@@ -564,7 +564,7 @@ static int docomp(PRJ *prj, MAKEOPTS *opts, filearg *ft)
 	{
 		const A_FLAGS *aflags = ft->u.aflags;
 
-		compiler_name = aflags->Coldfire ? "ahcc.ttp" : "pasm.ttp";
+		compiler_name = aflags->Coldfire ? "ahcc.ttp" : get_assembler_executable();
 		add_arg(&argc, &argv, compiler_name);
 		/* many levels of verbosity */
 		if (aflags->verbose > 0)
@@ -608,7 +608,7 @@ static int docomp(PRJ *prj, MAKEOPTS *opts, filearg *ft)
 	{
 		const C_FLAGS *cflags = ft->u.cflags;
 
-		compiler_name = cflags->Coldfire || cflags->default_int32 ? "ahcc.ttp" : "pcc.ttp";
+		compiler_name = cflags->Coldfire || cflags->default_int32 ? "ahcc.ttp" : get_compiler_executable();
 		add_arg(&argc, &argv, compiler_name);
 		/* many levels of verbosity */
 		if (cflags->verbose > 0)
@@ -801,7 +801,7 @@ static bool dold(PRJ *prj, MAKEOPTS *opts)
 
 	argc = 0;
 	argv = g_new(char *, 1);
-	add_arg(&argc, &argv, "plink.ttp");
+	add_arg(&argc, &argv, get_linker_executable());
 	if (prj->ld_flags.verbose > 0)
 		add_arg(&argc, &argv, "-V");
 	if (prj->ld_flags.verbose > 1)
@@ -936,6 +936,11 @@ static bool dold(PRJ *prj, MAKEOPTS *opts)
 			errout(_("%s: linking failed: %d"), prj->filename, rep);
 			if (prj->output_type != FT_PROJECT)
 				remove_output(prj->output);
+		}
+		if (rep == 0)
+		{
+			if (opts->verbose > 0)
+				fprintf(stdout, _("link OK\n"));
 		}
 	}
 	

@@ -14,6 +14,9 @@
 static char *pc_dir;
 static char *pc_libdir;
 static char *pc_includedir;
+static char *compiler_executable;
+static char *linker_executable;
+static char *assembler_executable;
 
 #define PATH_SEPTOK ";,"
 
@@ -31,6 +34,24 @@ void set_pcdir(const char *argv0)
 		pc_dir = dirname(argv0);
 	pc_libdir = build_path(pc_dir, "lib");
 	pc_includedir = build_path(pc_dir, "include");
+	compiler_executable = build_path(pc_dir, "pcc.ttp");
+	if (!file_exists(compiler_executable))
+	{
+		g_free(compiler_executable);
+		compiler_executable = g_strdup("pcc.ttp");
+	}
+	assembler_executable = build_path(pc_dir, "pasm.ttp");
+	if (!file_exists(assembler_executable))
+	{
+		g_free(assembler_executable);
+		assembler_executable = g_strdup("pasm.ttp");
+	}
+	linker_executable = build_path(pc_dir, "plink.ttp");
+	if (!file_exists(linker_executable))
+	{
+		g_free(linker_executable);
+		linker_executable = g_strdup("plink.ttp");
+	}
 }
 
 /* ---------------------------------------------------------------------- */
@@ -43,6 +64,12 @@ void exec_exit(void)
 	pc_libdir = NULL;
 	g_free(pc_includedir);
 	pc_includedir = NULL;
+	g_free(compiler_executable);
+	compiler_executable = NULL;
+	g_free(assembler_executable);
+	assembler_executable = NULL;
+	g_free(linker_executable);
+	linker_executable = NULL;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -64,6 +91,27 @@ const char *get_libdir(void)
 const char *get_includedir(void)
 {
 	return pc_includedir;
+}
+
+/* ---------------------------------------------------------------------- */
+
+const char *get_compiler_executable(void)
+{
+	return compiler_executable;
+}
+
+/* ---------------------------------------------------------------------- */
+
+const char *get_assembler_executable(void)
+{
+	return assembler_executable;
+}
+
+/* ---------------------------------------------------------------------- */
+
+const char *get_linker_executable(void)
+{
+	return linker_executable;
 }
 
 /**************************************************************************/

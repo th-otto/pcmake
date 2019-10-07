@@ -41,7 +41,7 @@ enum opt {
 };
 
 char const program_name[] = "pcmake";
-char const program_version[] = "1.0";
+char const program_version[] = "1.1";
 
 static bool show_version;
 static bool show_help;
