@@ -173,7 +173,6 @@ void init_cflags(C_FLAGS *flg)
 	flg->defines = NULL;
 	flg->undefines = NULL;
 	flg->c_includes = NULL;
-	flg->as_includes = NULL;
 	
 	flg->warning_level = DEFAULT_WARNINGLEVEL;
 	for (i = 0; i < WARN_MAX; i++)
@@ -182,14 +181,6 @@ void init_cflags(C_FLAGS *flg)
 	flg->no_output = false;
 
 	flg->default_int32 = false;
-
-	flg->supervisor = false;
-	flg->undefined_external = false;
-	flg->list_all_macro_lines = false;
-	flg->no_include_line_listing = false;
-	flg->no_macro_line_listing = false;
-	flg->no_false_condition_listing = false;
-	flg->print_listing = false;
 }
 
 
@@ -198,11 +189,10 @@ void free_cflags(C_FLAGS *c_flags)
 	list_free(&c_flags->defines);
 	list_free(&c_flags->undefines);
 	list_free(&c_flags->c_includes);
-	list_free(&c_flags->as_includes);
 }
 
 
-void adddef(C_FLAGS *cflags, const char *ns)
+void adddef(strlist **defines, const char *ns)
 {
 	strlist *entry;
 	const char *equal;
@@ -213,7 +203,7 @@ void adddef(C_FLAGS *cflags, const char *ns)
 		len1 = equal - ns;
 	else
 		len1 = 0;
-	for (entry = cflags->defines; entry != NULL; entry = entry->next)
+	for (entry = *defines; entry != NULL; entry = entry->next)
 	{
 		/*
 		 * simply ignore duplicate definitions;
@@ -254,7 +244,7 @@ void adddef(C_FLAGS *cflags, const char *ns)
 			}
 		}
 	}
-	list_append(&cflags->defines, ns);
+	list_append(defines, ns);
 }
 
 
@@ -264,13 +254,12 @@ static void subdef(C_FLAGS *cflags, const char *s)
 }
 
 
-void doincl(C_FLAGS *cflags, const char *s, strlist **includes)				/* optincl */
+void doincl(strlist **includes, const char *s)				/* optincl */
 {
 	char *buf;
 	char *pt;
 	char *dir;
 
-	(void)cflags;
 	buf = g_new(char, strlen(s) + 2);
 	if (buf == NULL)
 		return;
@@ -599,7 +588,7 @@ static bool parse_cflags(int argc, const char **argv, C_FLAGS *flg, int *poptind
 			break;
 		case 'd':
 		case 'D':
-			adddef(flg, xgetopt_arg_r(opts));
+			adddef(&flg->defines, xgetopt_arg_r(opts));
 			break;
 		case 'e':						/* no of errors */
 		case 'E':
@@ -612,7 +601,7 @@ static bool parse_cflags(int argc, const char **argv, C_FLAGS *flg, int *poptind
 			break;
 		case 'i':
 		case 'I':
-			doincl(flg, xgetopt_arg_r(opts), &flg->c_includes);
+			doincl(&flg->c_includes, xgetopt_arg_r(opts));
 			break;
 		case 'K' + 256:
 			flg->char_is_unsigned = false;
@@ -659,7 +648,7 @@ static bool parse_cflags(int argc, const char **argv, C_FLAGS *flg, int *poptind
 			flg->default_int32 = false;
 			break;
 		case OPT_SUPER:
-			flg->supervisor = true;
+			/* flg->supervisor = true; */
 			break;
 		case OPT_NO_OUTPUT:					/* No object output */
 			flg->no_output = true;
@@ -698,7 +687,6 @@ C_FLAGS *copy_cflags(const C_FLAGS *src)
 		dst->defines = list_copy(src->defines);
 		dst->undefines = list_copy(src->undefines);
 		dst->c_includes = list_copy(src->c_includes);
-		dst->as_includes = list_copy(src->as_includes);
 	}
 	return dst;
 }

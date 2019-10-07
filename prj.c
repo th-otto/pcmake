@@ -237,11 +237,17 @@ static filearg *keepfile(PRJ *prj, const char *f)
 		entry = putflist(&prj->inputs, f, ftype);
 		break;
 	case FT_CSOURCE:
-	case FT_ASSOURCE:
 		entry = putflist(&prj->inputs, f, ftype);
 		if (entry)
 		{
 			entry->u.cflags = copy_cflags(&prj->c_flags);
+		}
+		break;
+	case FT_ASSOURCE:
+		entry = putflist(&prj->inputs, f, ftype);
+		if (entry)
+		{
+			entry->u.aflags = copy_aflags(&prj->a_flags);
 		}
 		break;
 	case FT_OBJECT:
@@ -299,9 +305,12 @@ static void clear_project(PRJ *prj, int level)
 			switch (ft->filetype)
 			{
 			case FT_CSOURCE:
-			case FT_ASSOURCE:
 				free_cflags(ft->u.cflags);
 				g_free(ft->u.cflags);
+				break;
+			case FT_ASSOURCE:
+				free_aflags(ft->u.aflags);
+				g_free(ft->u.aflags);
 				break;
 			case FT_PROJECT:
 				clear_project(ft->u.prj, level + 1);
@@ -317,6 +326,7 @@ static void clear_project(PRJ *prj, int level)
 		g_free(prj->directory);
 		
 		free_cflags(&prj->c_flags);
+		free_aflags(&prj->a_flags);
 		free_ldflags(&prj->ld_flags);
 		
 		g_free(prj);
@@ -347,9 +357,20 @@ static char *objname_for_src(PRJ *prj, filearg *ft)
 	char *objname;
 	char *tmp;
 	
-	if (prj->c_flags.output_directory)
+	if (ft->filetype == FT_CSOURCE && ft->u.cflags && ft->u.cflags->output_name)
+	{
+		objname = dup_filename(ft->u.cflags->output_name);
+	} else if (ft->filetype == FT_CSOURCE && prj->c_flags.output_directory)
 	{
 		tmp = build_path(prj->c_flags.output_directory, basename(ft->name));
+		objname = change_suffix(tmp, suff_o);
+		g_free(tmp);
+	} else if (ft->filetype == FT_ASSOURCE && ft->u.aflags && ft->u.aflags->output_name)
+	{
+		objname = dup_filename(ft->u.aflags->output_name);
+	} else if (ft->filetype == FT_ASSOURCE && prj->a_flags.output_directory)
+	{
+		tmp = build_path(prj->a_flags.output_directory, basename(ft->name));
 		objname = change_suffix(tmp, suff_o);
 		g_free(tmp);
 	} else
@@ -477,7 +498,7 @@ static void add_optarg(int *argc, char ***argv, const char *sw, const char *arg)
 
 
 /* called by docomp() */
-static void prj_params(const C_FLAGS *cflags, int *argc, char ***argv, bool is_asm)
+static void prj_cparams(const C_FLAGS *cflags, int *argc, char ***argv)
 {
 	const strlist *str;
 	
@@ -491,7 +512,24 @@ static void prj_params(const C_FLAGS *cflags, int *argc, char ***argv, bool is_a
 		add_optarg(argc, argv, "-U", str->str);
 	}
 
-	for (str = is_asm ? cflags->as_includes : cflags->c_includes; str != NULL; str = str->next)
+	for (str = cflags->c_includes; str != NULL; str = str->next)
+	{
+		add_optarg(argc, argv, "-I", str->str);
+	}
+}
+
+
+/* called by docomp() */
+static void prj_aparams(const A_FLAGS *aflags, int *argc, char ***argv)
+{
+	const strlist *str;
+	
+	for (str = aflags->defines; str != NULL; str = str->next)
+	{
+		add_optarg(argc, argv, "-D", str->str);
+	}
+
+	for (str = aflags->as_includes; str != NULL; str = str->next)
 	{
 		add_optarg(argc, argv, "-I", str->str);
 	}
@@ -515,7 +553,6 @@ static int docomp(PRJ *prj, MAKEOPTS *opts, filearg *ft)
 	int argc;
 	char **argv;
 	char buf[32];
-	const C_FLAGS *cflags = ft->u.cflags;
 	bool is_asm = ft->filetype == FT_ASSOURCE;
 	char *srcname;
 	char *output_name;
@@ -525,32 +562,66 @@ static int docomp(PRJ *prj, MAKEOPTS *opts, filearg *ft)
 	argv = NULL;
 	if (is_asm)
 	{
-		compiler_name = cflags->Coldfire ? "ahcc.ttp" : "pasm.ttp";
-	} else
-	{
-		compiler_name = cflags->Coldfire || cflags->default_int32 ? "ahcc.ttp" : "pcc.ttp";
-	}
-	add_arg(&argc, &argv, compiler_name);
+		const A_FLAGS *aflags = ft->u.aflags;
 
-	/* many levels of verbosity */
-	if (cflags->verbose > 0)
-		add_arg(&argc, &argv, "-V");
-	if (cflags->verbose > 1)
-		add_arg(&argc, &argv, "-V");
-	if (cflags->verbose > 2)
-		add_arg(&argc, &argv, "-V");
-	if (cflags->verbose > 3)
-		add_arg(&argc, &argv, "-V");
-	if (cflags->output_DRI)
-		add_arg(&argc, &argv, "-B");
-	if (is_asm)
-	{
-		if (cflags->supervisor)
+		compiler_name = aflags->Coldfire ? "ahcc.ttp" : "pasm.ttp";
+		add_arg(&argc, &argv, compiler_name);
+		/* many levels of verbosity */
+		if (aflags->verbose > 0)
+			add_arg(&argc, &argv, "-V");
+		if (aflags->verbose > 1)
+			add_arg(&argc, &argv, "-V");
+		if (aflags->verbose > 2)
+			add_arg(&argc, &argv, "-V");
+		if (aflags->verbose > 3)
+			add_arg(&argc, &argv, "-V");
+		if (aflags->output_DRI)
+			add_arg(&argc, &argv, "-B");
+		if (aflags->supervisor)
 			add_arg(&argc, &argv, "-S");						/* default .super in assembly */
-		if (cflags->undefined_external)
+		if (aflags->undefined_external)
 			add_arg(&argc, &argv, "-U");
+
+		if (aflags->Coldfire)
+			add_arg(&argc, &argv, "-7");
+		if (aflags->i2_68020 && !aflags->Coldfire)
+			add_arg(&argc, &argv, "-2");	/* >= 68020 */
+		if (aflags->i2_68030)
+			add_arg(&argc, &argv, "-3");	/* 68030 */
+		if (aflags->i2_68040)
+			add_arg(&argc, &argv, "-4");	/* 68040 */
+		if (aflags->i2_68851)
+			add_arg(&argc, &argv, "-5");	/* 68851 */
+		if (aflags->i2_68060)
+			add_arg(&argc, &argv, "-6");	/* 68060 */
+		if (aflags->use_FPU)
+			add_arg(&argc, &argv, "-8");	/* FPU */
+		if (aflags->debug_infos)
+			add_arg(&argc, &argv, "-Y");
+		if (aflags->no_output)
+			add_arg(&argc, &argv, "--fno-output");
+
+		prj_aparams(aflags, &argc, &argv);
+
+		output_name = objname_for_src(prj, ft);
 	} else
 	{
+		const C_FLAGS *cflags = ft->u.cflags;
+
+		compiler_name = cflags->Coldfire || cflags->default_int32 ? "ahcc.ttp" : "pcc.ttp";
+		add_arg(&argc, &argv, compiler_name);
+		/* many levels of verbosity */
+		if (cflags->verbose > 0)
+			add_arg(&argc, &argv, "-V");
+		if (cflags->verbose > 1)
+			add_arg(&argc, &argv, "-V");
+		if (cflags->verbose > 2)
+			add_arg(&argc, &argv, "-V");
+		if (cflags->verbose > 3)
+			add_arg(&argc, &argv, "-V");
+		if (cflags->output_DRI)
+			add_arg(&argc, &argv, "-B");
+
 		if (cflags->nested_comments)
 			add_arg(&argc, &argv, "-C");	/* nested comments */
 		if (cflags->max_errors >= 0 && cflags->max_errors != DEFAULT_MAXERRS)
@@ -601,48 +672,36 @@ static int docomp(PRJ *prj, MAKEOPTS *opts, filearg *ft)
 			if (cflags->warning_enabled[warn] >= 0)
 				add_optarg(&argc, &argv, cflags->warning_enabled[warn] ? "-W" : "-W-", warnings[warn].short_switch);
 		}
-	}
-	if (!is_asm && cflags->Coldfire && cflags->i2_68020)
-		add_arg(&argc, &argv, "-27");
-	else if (cflags->Coldfire)
-		add_arg(&argc, &argv, "-7");
-	if (cflags->i2_68020 && !cflags->Coldfire)
-		add_arg(&argc, &argv, "-2");	/* >= 68020 */
-	if (cflags->i2_68030)
-		add_arg(&argc, &argv, "-3");	/* 68030 */
-	if (cflags->i2_68040)
-		add_arg(&argc, &argv, "-4");	/* 68040 */
-	if (cflags->i2_68851)
-		add_arg(&argc, &argv, "-5");	/* 68851 */
-	if (cflags->i2_68060)
-		add_arg(&argc, &argv, "-6");	/* 68060 */
-	if (cflags->use_FPU)
-		add_arg(&argc, &argv, "-8");	/* FPU */
-	if (cflags->debug_infos)
-		add_arg(&argc, &argv, "-Y");
-	if (cflags->no_output)
-		add_arg(&argc, &argv, "--fno-output");
 
-	srcname = dup_filename(ft->name);
+		if (!is_asm && cflags->Coldfire && cflags->i2_68020)
+			add_arg(&argc, &argv, "-27");
+		else if (cflags->Coldfire)
+			add_arg(&argc, &argv, "-7");
+		if (cflags->i2_68020 && !cflags->Coldfire)
+			add_arg(&argc, &argv, "-2");	/* >= 68020 */
+		if (cflags->i2_68030)
+			add_arg(&argc, &argv, "-3");	/* 68030 */
+		if (cflags->i2_68040)
+			add_arg(&argc, &argv, "-4");	/* 68040 */
+		if (cflags->i2_68851)
+			add_arg(&argc, &argv, "-5");	/* 68851 */
+		if (cflags->i2_68060)
+			add_arg(&argc, &argv, "-6");	/* 68060 */
+		if (cflags->use_FPU)
+			add_arg(&argc, &argv, "-8");	/* FPU */
+		if (cflags->debug_infos)
+			add_arg(&argc, &argv, "-Y");
+		if (cflags->no_output)
+			add_arg(&argc, &argv, "--fno-output");
 	
-#if 0
-	if (cflags->output_directory != NULL && cflags->output_directory[0] != '\0')
-	{
-		add_optarg(&argc, &argv, "-N", cflags->output_directory);
-	}
-#endif
+		prj_cparams(cflags, &argc, &argv);
 
-	prj_params(cflags, &argc, &argv, is_asm);
-	if (!is_asm)
 		add_optarg(&argc, &argv, "-I", get_includedir());
-	
-	if (cflags->output_name)
-	{
-		output_name = dup_filename(cflags->output_name);
-	} else
-	{
+
 		output_name = objname_for_src(prj, ft);
 	}
+
+	srcname = dup_filename(ft->name);
 	
 	add_optarg(&argc, &argv, "-O", output_name);
 
@@ -761,7 +820,7 @@ static bool dold(PRJ *prj, MAKEOPTS *opts)
 		add_arg(&argc, &argv, "-P");
 	if (prj->ld_flags.debug_infos)
 		add_arg(&argc, &argv, "-Y");
-	if (prj->ld_flags.create_new_object)
+	if (prj->ld_flags.create_new_object || prj->output_type == FT_LIBRARY)
 		add_arg(&argc, &argv, "-J");
 	if (prj->ld_flags.malloc_for_stram)
 		add_arg(&argc, &argv, "-M");
@@ -1176,6 +1235,7 @@ static PRJ *load_prj(MAKEOPTS *opts, const char *f, int level)
 		return NULL;
 	}
 	init_cflags(&prj->c_flags);
+	init_aflags(&prj->a_flags);
 	init_ldflags(&prj->ld_flags);
 
 	prj->filename = s;
@@ -1231,7 +1291,7 @@ static PRJ *load_prj(MAKEOPTS *opts, const char *f, int level)
 					if (lopt == NULL)
 						result = false;
 					else
-						result = parse_as_options(lopt, &prj->c_flags);
+						result = parse_as_options(lopt, &prj->a_flags);
 					g_free(lopt);
 				} else if (c == 'L' || c == 'l')
 				{
@@ -1273,7 +1333,7 @@ static PRJ *load_prj(MAKEOPTS *opts, const char *f, int level)
 					}
 					if ((opt = getenv("PCASFLAGS")) != NULL)
 					{
-						if (parse_as_options(opt, &prj->c_flags) == false)
+						if (parse_as_options(opt, &prj->a_flags) == false)
 						{
 							errout(_("%s: Illegal option specification: %s"), Error, opt);
 							retval = false;
@@ -1365,7 +1425,7 @@ static PRJ *load_prj(MAKEOPTS *opts, const char *f, int level)
 							else if (keep->filetype == FT_CSOURCE)
 								result = parse_cc_options(opt, keep->u.cflags);
 							else if (keep->filetype == FT_ASSOURCE)
-								result = parse_as_options(opt, keep->u.cflags);
+								result = parse_as_options(opt, keep->u.aflags);
 							else
 								result = false;
 							if (result == false)

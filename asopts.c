@@ -5,6 +5,9 @@
 #include "getopt.h"
 #include "pcmake.h"
 
+#define OPT_SUPER            506
+#define OPT_NO_OUTPUT        511
+
 static struct option const long_options_as[] = {
 	{ "list-all-macro-lines", no_argument, NULL, 'A' },
 	{ "dri", no_argument, NULL, 'B' },
@@ -34,8 +37,41 @@ static struct option const long_options_as[] = {
 	{ "m68881", no_argument, NULL, '8' },
 	{ "m68882", no_argument, NULL, '8' },
 	
+	{ "msuper", no_argument, NULL, OPT_SUPER },
+	{ "fno-output", no_argument, NULL, OPT_NO_OUTPUT },
+	
 	{ NULL, no_argument, NULL, 0 }
 };
+
+
+void init_aflags(A_FLAGS *flg)
+{
+	memset(flg, 0, sizeof(*flg));
+	flg->output_DRI = false;
+	flg->output_directory = NULL;
+	flg->output_name = NULL;
+	flg->verbose = 0;
+	flg->i2_68010 = false;
+	flg->i2_68020 = false;
+	flg->i2_68030 = false;
+	flg->i2_68040 = false;
+	flg->i2_68060 = false;
+	flg->i2_68851 = false;
+	flg->use_FPU = false;
+	flg->Coldfire = false;
+	flg->defines = NULL;
+	flg->as_includes = NULL;
+	
+	flg->no_output = false;
+
+	flg->supervisor = false;
+	flg->undefined_external = false;
+	flg->list_all_macro_lines = false;
+	flg->no_include_line_listing = false;
+	flg->no_macro_line_listing = false;
+	flg->no_false_condition_listing = false;
+	flg->print_listing = false;
+}
 
 
 static const char *xgetopt_arg_r(struct _getopt_data *opts)
@@ -47,7 +83,7 @@ static const char *xgetopt_arg_r(struct _getopt_data *opts)
 }
 
 
-static void set_asflag(C_FLAGS *flg, char *flag, bool on)
+static void set_asflag(A_FLAGS *flg, char *flag, bool on)
 {
 	switch (*flag)
 	{
@@ -132,7 +168,7 @@ static void set_asflag(C_FLAGS *flg, char *flag, bool on)
 }
 
 
-static bool parse_asflags(int argc, const char **argv, C_FLAGS *flg, int *poptind)
+static bool parse_asflags(int argc, const char **argv, A_FLAGS *flg, int *poptind)
 {
 	struct _getopt_data *opts;
 	int c;
@@ -182,11 +218,11 @@ static bool parse_asflags(int argc, const char **argv, C_FLAGS *flg, int *poptin
 			break;
 		case 'd':
 		case 'D':
-			adddef(flg, xgetopt_arg_r(opts));
+			adddef(&flg->defines, xgetopt_arg_r(opts));
 			break;
 		case 'i':
 		case 'I':
-			doincl(flg, xgetopt_arg_r(opts), &flg->as_includes);
+			doincl(&flg->as_includes, xgetopt_arg_r(opts));
 			break;
 		case 'n':
 		case 'N':
@@ -205,6 +241,13 @@ static bool parse_asflags(int argc, const char **argv, C_FLAGS *flg, int *poptin
 		case 'w':
 		case 'W':
 			/* TODO: enable warnings */
+			break;
+
+		case OPT_SUPER:
+			flg->supervisor = true;
+			break;
+		case OPT_NO_OUTPUT:					/* No object output */
+			flg->no_output = true;
 			break;
 
 		case '-':
@@ -234,7 +277,7 @@ static const char *ON(bool opt)
 }
 
 
-static void print_usage(C_FLAGS *flg, bool to_stderr)
+static void print_usage(A_FLAGS *flg, bool to_stderr)
 {
 	FILE *fp;
 	
@@ -263,7 +306,31 @@ static void print_usage(C_FLAGS *flg, bool to_stderr)
 }
 
 
-bool parse_as_options(const char *arg, C_FLAGS *flg)
+void free_aflags(A_FLAGS *a_flags)
+{
+	list_free(&a_flags->defines);
+	list_free(&a_flags->as_includes);
+}
+
+
+A_FLAGS *copy_aflags(const A_FLAGS *src)
+{
+	A_FLAGS *dst;
+	
+	dst = g_new(A_FLAGS, 1);
+	if (dst != NULL)
+	{
+		*dst = *src;
+		dst->output_directory = g_strdup(src->output_directory);
+		dst->output_name = NULL;
+		dst->defines = list_copy(src->defines);
+		dst->as_includes = list_copy(src->as_includes);
+	}
+	return dst;
+}
+
+
+bool parse_as_options(const char *arg, A_FLAGS *flg)
 {
 	char **argv;
 	int argc;

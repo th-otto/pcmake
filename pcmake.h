@@ -48,14 +48,6 @@ typedef struct _cflags {
 	bool use_FPU;				/* -8, enable floating point h/w */
 	bool Coldfire;				/* -7, Coldfire (double is 64 bits) */
 
-	bool supervisor;			/* default .super in assembly */
-	bool undefined_external;	/* undefined symbols are external */
-	bool list_all_macro_lines;
-	bool no_include_line_listing;
-	bool no_macro_line_listing;
-	bool no_false_condition_listing;
-	bool print_listing;
-	
 	bool default_int32;			/* -mno-short, default int 32 bits */
 
 	int warning_level;
@@ -66,8 +58,36 @@ typedef struct _cflags {
     strlist *defines;
     strlist *undefines;
     strlist *c_includes;
-    strlist *as_includes;
 } C_FLAGS;
+
+typedef struct _aflags {
+	bool i2_68010;				/* -1, >= 68010 */
+	bool i2_68020;				/* -2, >= 68020 */
+	bool i2_68030;				/* -3, 68030 */
+	bool i2_68040;				/* -4, 68040 */
+	bool i2_68851;				/* -5, 68851 */
+	bool i2_68060;				/* -6, 68060 */
+	bool Coldfire;				/* -7, Coldfire (double is 64 bits) */
+	bool use_FPU;				/* -8, enable floating point h/w */
+	bool output_DRI;			/* -B, DRI object output */
+
+	char *output_directory;			 /* -N, output directory */
+	char *output_name;				 /* -O, output file name */
+	bool supervisor;			     /* -S, default .super in assembly */
+	bool debug_infos;				 /* -Y, generate debug information */
+	bool undefined_external;	     /* -U, undefined symbols are external */
+	short verbose;					 /* -V, number of v's = level of verbosity */
+	bool no_include_line_listing;    /* -C */
+	bool no_macro_line_listing;      /* -M */
+	bool no_false_condition_listing; /* -F */
+	bool list_all_macro_lines;       /* -A */
+	bool print_listing;              /* -P */
+	
+	bool no_output;
+	
+    strlist *defines;
+	strlist *as_includes;
+} A_FLAGS;
 
 typedef struct
 {
@@ -114,6 +134,7 @@ struct _filearg {
 	FTY filetype;
 	union {
 		C_FLAGS *cflags;
+		A_FLAGS *aflags;
 		PRJ *prj;
 	} u;
 	char name[1];
@@ -125,6 +146,7 @@ struct project
 	char *directory;
 	LD_FLAGS ld_flags;
 	C_FLAGS c_flags;
+	A_FLAGS a_flags;
 	filearg *inputs;
 	char *output;
 	FTY output_type;
@@ -153,8 +175,8 @@ extern char const suff_prg[];
 extern bool errout_nfdebug;
 
 
-void adddef(C_FLAGS *flg, const char *str);
-void doincl(C_FLAGS *flg, const char *str, strlist **includes);
+void adddef(strlist **defines, const char *str);
+void doincl(strlist **includes, const char *str);
 
 void errout_va(const char *format, va_list args) __attribute__((format(printf, 1, 0)));
 void errout(const char *format, ...) __attribute__((format(printf, 1, 2)));
@@ -181,7 +203,11 @@ void init_cflags(C_FLAGS *flg);
 void free_cflags(C_FLAGS *flg);
 C_FLAGS *copy_cflags(const C_FLAGS *src);
 bool parse_cc_options(const char *arg, C_FLAGS *flg);
-bool parse_as_options(const char *arg, C_FLAGS *flg);
+
+void init_aflags(A_FLAGS *flg);
+void free_aflags(A_FLAGS *flg);
+A_FLAGS *copy_aflags(const A_FLAGS *src);
+bool parse_as_options(const char *arg, A_FLAGS *flg);
 
 
 void init_ldflags(LD_FLAGS *flg);
