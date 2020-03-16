@@ -21,7 +21,7 @@ static struct option const long_options[] = {
 	{ "data-start", required_argument, NULL, 'D' },
 	{ "text-start", required_argument, NULL, 'T' },
 	{ "imagesize", required_argument, NULL, 'I' },
-	{ "verbose", no_argument, NULL, 'v' },
+	{ "verbose", no_argument, NULL, 'V' },
 	{ "debug", no_argument, NULL, 'Y' },
 	{ NULL, no_argument, NULL, 0 }
 };
@@ -33,7 +33,7 @@ static void print_usage(bool to_stderr)
 	
 	fp = to_stderr ? stderr : stdout;
 	fprintf(fp, ("usage: PLINK [<options>] [<file>...]\n"));
-	fprintf(fp, ("  -v, --verbose            Verbose\n"));
+	fprintf(fp, ("  -V, --verbose            Verbose\n"));
 	fprintf(fp, ("  -J, --new-object         Generate object output (make new linkable object)\n"));
 	fprintf(fp, ("  -o, --output=<file>      Output file name\n"));
 	fprintf(fp, ("  -N, --symbol-list        Write 'nm' type symbol list\n"));
@@ -160,7 +160,7 @@ static bool parse_ldflags(int argc, const char **argv, LD_FLAGS *flg, int *popti
 	
 	getopt_init_r(program_name, &opts);
 	getopt_seterrprint_r(opts, errout);
-	while ((c = getopt_long_only_r(argc, argv, "b:B:c:C:d:D:gGi:I:jJlLmMnNo:pPrRs:S:t:T:vyY-+", long_options, NULL, opts)) != EOF)
+	while ((c = getopt_long_only_r(argc, argv, "b:B:c:C:d:D:gGi:I:jJlLmMnNo:pPrRs:S:t:T:vVyY-+", long_options, NULL, opts)) != EOF)
 	{
 		if (c == '-')
 			set_ldflag(flg, &lastflag, false);
