@@ -898,6 +898,14 @@ static bool dold(PRJ *prj, MAKEOPTS *opts)
 				}
 				g_free(name);
 				break;
+			case FT_PROJECT:
+				if (ft->u.prj && ft->u.prj->output_type == FT_LIBRARY)
+				{
+					name = build_path(ft->u.prj->directory, ft->u.prj->output);
+					add_arg(&argc, &argv, name);
+					g_free(name);
+				}
+				break;
 			default:
 				break;
 			}
