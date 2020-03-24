@@ -828,31 +828,44 @@ static bool dold(PRJ *prj, MAKEOPTS *opts)
 		add_arg(&argc, &argv, "-F");
 	if (prj->ld_flags.program_to_stram)
 		add_arg(&argc, &argv, "-R");
-	if (prj->ld_flags.heap_size > 0)
+	if (prj->ld_flags.create_new_object || prj->output_type == FT_LIBRARY)
 	{
-		sprintf(buf, "-H=0x%08lx", prj->ld_flags.heap_size);
-		add_arg(&argc, &argv, buf);
-	}
-	if (prj->ld_flags.stacksize > 0)
+		if (prj->ld_flags.heap_size > 0 ||
+			prj->ld_flags.text_start > 0 ||
+			prj->ld_flags.data_start > 0 ||
+			prj->ld_flags.bss_start > 0)
+			errout(_("%s: %s: ignoring base addresses when linking library"), Warning, prj->filename);
+	} else
 	{
-		/* no hex output here; the linker does not accept this */
-		sprintf(buf, "-S=%lu", prj->ld_flags.stacksize);
-		add_arg(&argc, &argv, buf);
-	}
-	if (prj->ld_flags.text_start > 0)
-	{
-		sprintf(buf, "-T=0x%08lx", prj->ld_flags.text_start);
-		add_arg(&argc, &argv, buf);
-	}
-	if (prj->ld_flags.data_start > 0)
-	{
-		sprintf(buf, "-D=0x%08lx", prj->ld_flags.data_start);
-		add_arg(&argc, &argv, buf);
-	}
-	if (prj->ld_flags.bss_start > 0)
-	{
-		sprintf(buf, "-B=0x%08lx", prj->ld_flags.bss_start);
-		add_arg(&argc, &argv, buf);
+		/*
+		 * no hex output here; the linker does not accept this
+		 * (it accepts '$' as prefix, but that might be substituted by the shell)
+		 */
+		if (prj->ld_flags.heap_size > 0)
+		{
+			sprintf(buf, "-H=%lu", prj->ld_flags.heap_size);
+			add_arg(&argc, &argv, buf);
+		}
+		if (prj->ld_flags.stacksize >= 0)
+		{
+			sprintf(buf, "-S=%lu", prj->ld_flags.stacksize);
+			add_arg(&argc, &argv, buf);
+		}
+		if (prj->ld_flags.text_start > 0)
+		{
+			sprintf(buf, "-T=%lu", prj->ld_flags.text_start);
+			add_arg(&argc, &argv, buf);
+		}
+		if (prj->ld_flags.data_start > 0)
+		{
+			sprintf(buf, "-D=%lu", prj->ld_flags.data_start);
+			add_arg(&argc, &argv, buf);
+		}
+		if (prj->ld_flags.bss_start > 0)
+		{
+			sprintf(buf, "-B=%lu", prj->ld_flags.bss_start);
+			add_arg(&argc, &argv, buf);
+		}
 	}
 	if (prj->ld_flags.nm_list)
 		add_arg(&argc, &argv, "--symbol-list");
@@ -899,7 +912,7 @@ static bool dold(PRJ *prj, MAKEOPTS *opts)
 				g_free(name);
 				break;
 			case FT_PROJECT:
-				if (ft->u.prj && ft->u.prj->output_type == FT_LIBRARY)
+				if (ft->u.prj && (ft->u.prj->ld_flags.create_new_object || ft->u.prj->output_type == FT_LIBRARY))
 				{
 					name = build_path(ft->u.prj->directory, ft->u.prj->output);
 					add_arg(&argc, &argv, name);
