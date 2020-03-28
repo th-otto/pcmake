@@ -32,7 +32,9 @@ typedef enum {
 	WARN_SIG,			/* "Conversion may lose significant digits." */
 	WARN_UCP,			/* "Mixing pointers to signed and unsigned char." */
 	WARN_RPT,			/* "Non portable pointer assignment." */
-	WARN_PC_LAST = WARN_RPT,
+	WARN_ASM,			/* "Unknown assembler instruction" */
+	WARN_STK,			/* */
+	WARN_PC_LAST = WARN_STK,
 /* AHCC specific warnings: */
 	WARN_CON,			/* "uninitialized const object" */
 	WARN_GOT,			/* "'goto' used */
