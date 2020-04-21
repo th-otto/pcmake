@@ -667,6 +667,10 @@ static int docomp(PRJ *prj, MAKEOPTS *opts, filearg *ft)
 		if (cflags->default_int32)
 			add_arg(&argc, &argv, "--mno-short");					/* default int is 32 bits */
 		
+		if (cflags->warning_level < DEFAULT_WARNINGLEVEL)
+			add_optarg(&argc, &argv, "-W-", "");
+		else if (cflags->warning_level > DEFAULT_WARNINGLEVEL)
+			add_optarg(&argc, &argv, "-W+", "");
 		for (warn = 0; warn < WARN_MAX; warn++)
 		{
 			if (cflags->warning_enabled[warn] >= 0)

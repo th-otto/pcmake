@@ -8,7 +8,7 @@
 #define DEFAULT_MAXWARNS 50
 #define DEFAULT_IDLENGTH 32
 #define MAX_WARNINGLEVEL 2
-#define DEFAULT_WARNINGLEVEL MAX_WARNINGLEVEL
+#define DEFAULT_WARNINGLEVEL 1
 #define MAX_IDLENGTH 254 /* limit through object file format; cannot easily be changed */
 #define DEFAULT_STACKSIZE 4096					/* default stacksize is Pure C compatible */
 

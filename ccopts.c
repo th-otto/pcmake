@@ -75,7 +75,7 @@ int get_warning_level(warning_category category)
 	for (i = 0; i < sizeof(warnings) / sizeof(warnings[0]); i++)
 		if (warnings[i].category == category)
 			return warnings[i].level;
-	return DEFAULT_WARNINGLEVEL;
+	return MAX_WARNINGLEVEL;
 }
 
 
@@ -122,7 +122,7 @@ static struct option const long_options[] = {
 	{ "m68020", no_argument, NULL, '2' },
 	{ "m68030", no_argument, NULL, '3' },
 	{ "m68040", no_argument, NULL, '4' },
-	{ "m68751", no_argument, NULL, '5' },
+	{ "m68851", no_argument, NULL, '5' },
 	{ "m68060", no_argument, NULL, '6' },
 	{ "mcoldfire", no_argument, NULL, '7' },
 	{ "mcfv4e", no_argument, NULL, '7' },
@@ -149,7 +149,6 @@ void init_cflags(C_FLAGS *flg)
 	flg->nested_comments = false;
 	flg->max_errors = DEFAULT_MAXERRS;
 	flg->max_warnings = DEFAULT_MAXWARNS;
-	flg->warning_level = DEFAULT_WARNINGLEVEL;
 	flg->optimize_size = false;
 	flg->cdecl_calling = false;
 	flg->no_jump_optimization = false;
@@ -459,10 +458,22 @@ static bool parse_c_warning_or_level(const char *arg, C_FLAGS *flg)
 	{
 		on = false;
 		arg++;
+		/* -W- without arg: set warning_level 0 */
+		if (*arg == '\0')
+		{
+			flg->warning_level = 0;
+			return true;
+		}
 	} else if (*arg == '+')
 	{
 		on = true;
 		arg++;
+		/* -W+ without arg: set warning_level 2 */
+		if (*arg == '\0')
+		{
+			flg->warning_level = 2;
+			return true;
+		}
 	}
 	for (i = 0; i < sizeof(warnings) / sizeof(warnings[0]); i++)
 	{
