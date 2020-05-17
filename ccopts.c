@@ -70,12 +70,23 @@ warning const warnings[] = {
 
 int get_warning_level(warning_category category)
 {
-	size_t i;
+	int i;
 	
-	for (i = 0; i < sizeof(warnings) / sizeof(warnings[0]); i++)
+	for (i = 0; i < (int)(sizeof(warnings) / sizeof(warnings[0])); i++)
 		if (warnings[i].category == category)
 			return warnings[i].level;
 	return MAX_WARNINGLEVEL;
+}
+
+
+int get_warning_idx(warning_category category)
+{
+	int i;
+	
+	for (i = 0; i < (int)(sizeof(warnings) / sizeof(warnings[0])); i++)
+		if (warnings[i].category == category)
+			return i;
+	return -1;
 }
 
 
@@ -645,7 +656,7 @@ static bool parse_cflags(int argc, const char **argv, C_FLAGS *flg, int *poptind
 			break;
 		case 'u':
 		case 'U':
-			subdef(flg, xgetopt_arg_r(opts));					/* 3'91 v1.2 */
+			subdef(flg, xgetopt_arg_r(opts));
 			break;
 		case 'v':
 		case 'V':

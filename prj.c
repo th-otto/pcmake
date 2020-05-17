@@ -674,7 +674,7 @@ static int docomp(PRJ *prj, MAKEOPTS *opts, filearg *ft)
 		for (warn = 0; warn < WARN_MAX; warn++)
 		{
 			if (cflags->warning_enabled[warn] >= 0)
-				add_optarg(&argc, &argv, cflags->warning_enabled[warn] ? "-W" : "-W-", warnings[warn].short_switch);
+				add_optarg(&argc, &argv, cflags->warning_enabled[warn] ? "-W" : "-W-", warnings[get_warning_idx(warn)].short_switch);
 		}
 
 		if (!is_asm && cflags->Coldfire && cflags->i2_68020)

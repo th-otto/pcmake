@@ -195,6 +195,7 @@ int ch_dir(const char *path);
 
 
 int get_warning_level(warning_category category);
+int get_warning_idx(warning_category category);
 void init_cflags(C_FLAGS *flg);
 void free_cflags(C_FLAGS *flg);
 C_FLAGS *copy_cflags(const C_FLAGS *src);
