@@ -144,6 +144,7 @@ int main(int argc, const char **argv)
 	makeopts.nfdebug = false;
 	makeopts.print_directory = true;
 	makeopts.directory = NULL;
+	makeopts.dryrun = false;
 	prj_name = NULL;
 	
 	while ((c = getopt_long_only_r(argc, argv, "BC:FW:d::ef:ij::kno:qstvwhV", long_options, NULL, opts)) != EOF)
@@ -180,12 +181,14 @@ int main(int argc, const char **argv)
 		case OPT_NO_PRINT_DIRECTORY:
 			makeopts.print_directory = false;
 			break;
+		case OPT_DRYRUN:
+			makeopts.dryrun = true;
+			break;
 
 		case OPT_QUESTION:
 		case OPT_JOBS:
 		case OPT_KEEP_GOING:
 		case OPT_ENVIRON:
-		case OPT_DRYRUN:
 		case OPT_TOUCH:
 		case OPT_WHATIF:
 		case OPT_OLD_FILE:

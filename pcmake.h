@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include <stdarg.h>
+#include <time.h>
 #include "list.h"
 #include "warnings.h"
 #include "memdebug.h"
@@ -133,6 +134,8 @@ struct _filearg {
 		A_FLAGS *aflags;
 		PRJ *prj;
 	} u;
+	time_t src_time;
+	time_t obj_time;
 	char name[1];
 };
 
@@ -144,8 +147,7 @@ struct project
 	C_FLAGS c_flags;
 	A_FLAGS a_flags;
 	filearg *inputs;
-	char *output;
-	FILETYPE output_type;
+	filearg *output;
 };
 
 typedef struct _makeopts {
@@ -155,6 +157,7 @@ typedef struct _makeopts {
 	bool silent;
 	bool debug;
 	bool nfdebug;
+	bool dryrun;
 	bool print_directory;
 	char *directory;
 } MAKEOPTS;
