@@ -148,6 +148,7 @@ struct project
 	A_FLAGS a_flags;
 	filearg *inputs;
 	filearg *output;
+	bool needs_ahcc;
 };
 
 typedef struct _makeopts {
@@ -226,6 +227,8 @@ const char *get_includedir(void);
 const char *get_compiler_executable(void);
 const char *get_assembler_executable(void);
 const char *get_linker_executable(void);
+const char *get_ahcc_executable(void);
+const char *get_ahcl_executable(void);
 void exec_exit(void);
 int linker(int argc, const char **argv);
 int compiler(int argc, const char **argv);

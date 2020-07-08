@@ -592,7 +592,15 @@ static int docomp(PRJ *prj, MAKEOPTS *opts, filearg *ft)
 	{
 		const A_FLAGS *aflags = ft->u.aflags;
 
-		compiler_name = aflags->Coldfire ? "ahcc.ttp" : get_assembler_executable();
+		if (aflags->Coldfire)
+		{
+			/* for ahcc, compiler can be used as assembler */
+			compiler_name = get_compiler_executable();
+			prj->needs_ahcc = true;
+		} else
+		{
+			compiler_name = get_assembler_executable();
+		}
 		add_arg(&argc, &argv, compiler_name);
 		/* many levels of verbosity */
 		if (aflags->verbose > 0)
@@ -636,7 +644,14 @@ static int docomp(PRJ *prj, MAKEOPTS *opts, filearg *ft)
 	{
 		const C_FLAGS *cflags = ft->u.cflags;
 
-		compiler_name = cflags->Coldfire || cflags->default_int32 ? "ahcc.ttp" : get_compiler_executable();
+		if (cflags->Coldfire || cflags->default_int32)
+		{
+			compiler_name = get_ahcc_executable();;
+			prj->needs_ahcc = true;
+		} else
+		{
+			compiler_name = get_compiler_executable();
+		}
 		add_arg(&argc, &argv, compiler_name);
 		/* many levels of verbosity */
 		if (cflags->verbose > 0)
@@ -735,7 +750,9 @@ static int docomp(PRJ *prj, MAKEOPTS *opts, filearg *ft)
 
 	srcname = dup_filename(ft->name);
 	
-	add_optarg(&argc, &argv, "-O", output_name);
+	/* ahcc does not understand -O option */
+	if (!prj->needs_ahcc)
+		add_optarg(&argc, &argv, "-O", output_name);
 
 	add_arg(&argc, &argv, srcname);
 	
@@ -837,7 +854,7 @@ static bool dold(PRJ *prj, MAKEOPTS *opts)
 
 	argc = 0;
 	argv = g_new(char *, 1);
-	add_arg(&argc, &argv, get_linker_executable());
+	add_arg(&argc, &argv, prj->needs_ahcc ? get_ahcl_executable() : get_linker_executable());
 	if (prj->ld_flags.verbose > 0)
 		add_arg(&argc, &argv, "-V");
 	if (prj->ld_flags.verbose > 1)
@@ -948,11 +965,14 @@ static bool dold(PRJ *prj, MAKEOPTS *opts)
 				g_free(name);
 				break;
 			case FT_PROJECT:
-				if (ft->u.prj && (ft->u.prj->ld_flags.create_new_object || ft->u.prj->output->filetype == FT_LIBRARY))
+				if (ft->u.prj)
 				{
-					name = build_path(ft->u.prj->directory, ft->u.prj->output->name);
-					add_arg(&argc, &argv, name);
-					g_free(name);
+					if (ft->u.prj->ld_flags.create_new_object || ft->u.prj->output->filetype == FT_LIBRARY)
+					{
+						name = build_path(ft->u.prj->directory, ft->u.prj->output->name);
+						add_arg(&argc, &argv, name);
+						g_free(name);
+					}
 				}
 				break;
 			default:
@@ -1058,7 +1078,8 @@ static int make_prj(PRJ *prj, MAKEOPTS *opts, int level)
 	{
 		if (!opts->silent && opts->print_directory)
 		{
-			errout(_("%s: entering directory %s"), program_name, prj->directory);
+			/* errout(_("%s: entering directory %s"), program_name, prj->directory); */
+			errout(_("%s: processing %s"), program_name, prj->filename);
 		}
 	}
 
@@ -1099,6 +1120,7 @@ static int make_prj(PRJ *prj, MAKEOPTS *opts, int level)
 	
 			if (r >= 0)
 				anycomp += r;
+			prj->needs_ahcc |= ft->u.prj->needs_ahcc;
 		}
 	}
 
@@ -1222,7 +1244,7 @@ bool domake(PRJ *prj, MAKEOPTS *opts)
 			return false;
 		
 		if (anycomp == 0)
-			fprintf(stdout, _("%s: %s is up to date\n"), program_name, prj->output ? prj->output : prj->filename);
+			fprintf(stdout, _("%s: %s is up to date\n"), program_name, prj->output ? prj->output->name : prj->filename);
 	}
 
 	stats.end = clock();
@@ -1317,6 +1339,7 @@ static PRJ *load_prj(MAKEOPTS *opts, const char *f, int level)
 	prj->directory = dirname(f);
 	prj->inputs = NULL;
 	prj->output = NULL;
+	prj->needs_ahcc = false;
 	
 	lineno = 0;
 	while (fgets(st, (int)sizeof(st) - 1, fp) != 0)
