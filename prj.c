@@ -6,6 +6,7 @@
 #if defined(__TOS__) || defined(__atarist__)
 #ifdef __GNUC__
 #include <osbind.h>
+#include <mintbind.h>
 #define DOSTIME _DOSTIME
 #else
 #include <tos.h>
