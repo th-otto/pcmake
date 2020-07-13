@@ -4,6 +4,10 @@
 #include "list.h"
 #include "warnings.h"
 #include "memdebug.h"
+#if defined(__TOS__) || defined(__atarist__)
+#else
+#define stricmp strcasecmp
+#endif
 
 #define DEFAULT_MAXERRS 25
 #define DEFAULT_MAXWARNS 50
@@ -194,6 +198,7 @@ char *change_suffix(const char *filename, const char *ext);
 bool file_exists(const char *f);
 char *dirname(const char *f);
 void strbslash(char *str);
+void strfslash(char *str);
 char *get_cwd(void);
 int ch_dir(const char *path);
 

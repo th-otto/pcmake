@@ -3,15 +3,28 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <errno.h>
+#if defined(__TOS__) || defined(__atarist__)
 #ifdef __GNUC__
 #include <osbind.h>
 #define DOSTIME _DOSTIME
 #else
 #include <tos.h>
 #endif
+#define CROSSTOS_PREFIX 
+#define EXE_EXT ".ttp"
+#define PATH_SEP "\\"
+#else
+#include <fcntl.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#define CROSSTOS_PREFIX "m68k-atari-tos-pc-"
+#define EXE_EXT ""
+#define PATH_SEP "/"
+#endif
 #include "pcmake.h"
 
 static char *pc_dir;
+static char *pc_bindir;
 static char *pc_libdir;
 static char *pc_includedir;
 static char *compiler_executable;
@@ -31,9 +44,26 @@ extern char **environ;
 void set_pcdir(const char *argv0)
 {
 	if (argv0 == NULL || argv0[0] == '\0')
+	{
 		pc_dir = g_strdup("C:\\pc");
-	else
+		pc_bindir = pc_dir;
+	} else
+	{
+		char *t;
+		
 		pc_dir = dirname(argv0);
+		t = strrslash(pc_dir);
+		if (t && t[1] == '\0')
+		{
+			*t = '\0';
+			t = strrslash(pc_dir);
+		}
+		if (t && stricmp(t + 1, "bin") == 0)
+		{
+			pc_bindir = g_strdup(pc_dir);
+			*t = '\0';
+		}
+	}
 	pc_libdir = build_path(pc_dir, "lib");
 	pc_includedir = build_path(pc_dir, "include");
 }
@@ -42,8 +72,11 @@ void set_pcdir(const char *argv0)
 
 void exec_exit(void)
 {
+	if (pc_bindir != pc_dir)
+		g_free(pc_bindir);
 	g_free(pc_dir);
 	pc_dir = NULL;
+	pc_bindir = NULL;
 	g_free(pc_libdir);
 	pc_libdir = NULL;
 	g_free(pc_includedir);
@@ -87,11 +120,11 @@ const char *get_compiler_executable(void)
 {
 	if (compiler_executable == NULL)
 	{
-		compiler_executable = build_path(pc_dir, "pcc.ttp");
+		compiler_executable = build_path(pc_bindir, CROSSTOS_PREFIX "pcc" EXE_EXT);
 		if (!file_exists(compiler_executable))
 		{
 			g_free(compiler_executable);
-			compiler_executable = g_strdup("pcc.ttp");
+			compiler_executable = g_strdup(CROSSTOS_PREFIX "pcc" EXE_EXT);
 		}
 	}
 	return compiler_executable;
@@ -103,11 +136,11 @@ const char *get_assembler_executable(void)
 {
 	if (assembler_executable == NULL)
 	{
-		assembler_executable = build_path(pc_dir, "pasm.ttp");
+		assembler_executable = build_path(pc_bindir, CROSSTOS_PREFIX "pasm" EXE_EXT);
 		if (!file_exists(assembler_executable))
 		{
 			g_free(assembler_executable);
-			assembler_executable = g_strdup("pasm.ttp");
+			assembler_executable = g_strdup(CROSSTOS_PREFIX "pasm" EXE_EXT);
 		}
 	}
 	return assembler_executable;
@@ -119,11 +152,11 @@ const char *get_linker_executable(void)
 {
 	if (linker_executable == NULL)
 	{
-		linker_executable = build_path(pc_dir, "plink.ttp");
+		linker_executable = build_path(pc_bindir, CROSSTOS_PREFIX "plink" EXE_EXT);
 		if (!file_exists(linker_executable))
 		{
 			g_free(linker_executable);
-			linker_executable = g_strdup("plink.ttp");
+			linker_executable = g_strdup(CROSSTOS_PREFIX "plink" EXE_EXT);
 		}
 	}
 	return linker_executable;
@@ -135,11 +168,11 @@ const char *get_ahcc_executable(void)
 {
 	if (ahcc_executable == NULL)
 	{
-		ahcc_executable = build_path(pc_dir, "ahcccf.ttp");
+		ahcc_executable = build_path(pc_bindir, CROSSTOS_PREFIX "ahcccf" EXE_EXT);
 		if (!file_exists(ahcc_executable))
 		{
 			g_free(ahcc_executable);
-			ahcc_executable = g_strdup("ahcccf.ttp");
+			ahcc_executable = g_strdup(CROSSTOS_PREFIX "ahcccf" EXE_EXT);
 		}
 	}
 	return ahcc_executable;
@@ -151,11 +184,11 @@ const char *get_ahcl_executable(void)
 {
 	if (ahcl_executable == NULL)
 	{
-		ahcl_executable = build_path(pc_dir, "ahclcf.ttp");
+		ahcl_executable = build_path(pc_bindir, CROSSTOS_PREFIX "ahclcf" EXE_EXT);
 		if (!file_exists(ahcl_executable))
 		{
 			g_free(ahcl_executable);
-			ahcl_executable = g_strdup("ahclcf.ttp");
+			ahcl_executable = g_strdup(CROSSTOS_PREFIX "ahclcf" EXE_EXT);
 		}
 	}
 	return ahcl_executable;
@@ -239,7 +272,7 @@ static char *findcmd(const char *cmd)
 					g_free(pathbuf);
 					return NULL;
 				}
-				strcat(strcat(strcat(strcpy(file, p), "\\"), cmd), suf[i]);
+				strcat(strcat(strcat(strcpy(file, p), PATH_SEP), cmd), suf[i]);
 				if (file_exists(file))
 				{
 					g_free(pathbuf);
@@ -255,6 +288,7 @@ static char *findcmd(const char *cmd)
 
 /* ---------------------------------------------------------------------- */
 
+#if defined(__TOS__) || defined(__atarist__)
 static char *copyenv(const char *const *argv)
 {
 	char **parent_env;
@@ -303,6 +337,7 @@ static char *copyenv(const char *const *argv)
 	}
 	return env;
 }
+#endif
 
 
 static int do_exec(int argc, const char **argv)
@@ -313,6 +348,7 @@ static int do_exec(int argc, const char **argv)
 	path = findcmd(argv[0]);
 	if (path != NULL)
 	{
+#if defined(__TOS__) || defined(__atarist__)
 		char *env;
 		char tail[128];
 		size_t n;
@@ -355,6 +391,60 @@ static int do_exec(int argc, const char **argv)
 			}
 			g_free(env);
 		}
+#else
+		int pipefds[2];
+		int count, err;
+		pid_t child;
+
+		(void)argc;
+		if (pipe(pipefds) == 0 &&
+			fcntl(pipefds[1], F_SETFD, fcntl(pipefds[1], F_GETFD) | FD_CLOEXEC) == 0)
+		{
+			switch (child = fork())
+			{
+			case -1:
+				result = -1;
+				break;
+			case 0:
+				close(pipefds[0]);
+				execv(path, (char **)argv);
+				write(pipefds[1], &errno, sizeof(int));
+				_exit(0);
+			default:
+				close(pipefds[1]);
+				while ((count = read(pipefds[0], &err, sizeof(errno))) == -1)
+					if (errno != EAGAIN && errno != EINTR)
+						break;
+				if (count)
+				{
+					if (count == sizeof(errno))
+						errno = err;
+					else
+						errno = EINTR;
+					result = -1;
+				} else
+				{
+					/*
+					 * we get here if we could not read the errno from the pipe,
+					 * because the pipe was closed by a successful execvp() in the child
+					 */
+					close(pipefds[0]);
+					while (waitpid(child, &err, 0) == -1)
+					{
+						if (errno != EINTR)
+						{
+							result = -1;
+							break;
+						}
+					}
+					if (WIFEXITED(err))
+						result = WEXITSTATUS(err);
+					else if (WIFSIGNALED(err))
+						result = WTERMSIG(err) + 128;
+				}
+			}
+		}
+#endif
 		g_free(path);
 	}
 	if (result < 0)

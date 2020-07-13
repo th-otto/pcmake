@@ -11,8 +11,8 @@
 #else
 #include <tos.h>
 #endif
-#endif
 #include <mint/arch/nf_ops.h>
+#endif
 #include "getopt.h"
 #include "pcmake.h"
 
@@ -93,7 +93,10 @@ static void print_usage(bool to_stderr)
 	fprintf(fp, _("  -f, --file=FILE          Read FILE as a project file.\n"));
 	fprintf(fp, _("  -s, --silent             Don't echo commands.\n"));
 	fprintf(fp, _("  -v, --verbose            Increase verbosity.\n"));
+#if defined(__TOS__) || defined(__atarist__)
 	fprintf(fp, _("  -F, --nfdebug            Echo commands also to emulator, if present.\n"));
+#endif
+	fprintf(fp, _("  -n, --dry-run            Don't actually run any command; just print them.\n"));
 	fprintf(fp, _("  -w, --print-directory    Print the current directory.\n"));
 	fprintf(fp, _("      --no-print-directory Turn off -w, even if it was turned on implicitly.\n"));
 	fprintf(fp, _("  -V, --version            Print the version number and exit.\n"));
@@ -170,7 +173,11 @@ int main(int argc, const char **argv)
 			makeopts.debug = true;
 			break;
 		case OPT_NFDEBUG:
+#if defined(__TOS__) || defined(__atarist__)
 			makeopts.nfdebug = true;
+#else
+			errout(_("%s: option %c not supported on this system"), program_name, c);
+#endif
 			break;
 		case OPT_MAKEFILE:
 			prj_name = getopt_arg_r(opts);

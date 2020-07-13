@@ -9,8 +9,11 @@
 #else
 #include <tos.h>
 #endif
-#endif
 #include <mint/arch/nf_ops.h>
+#else
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
 #include "pcmake.h"
 
 char const Warning[] = N_("warning");
@@ -29,11 +32,13 @@ void errout_va(const char *format, va_list args)
 {
 	vfprintf(stderr, format, args);
 	fputc('\n', stderr);
+#if defined(__TOS__) || defined(__atarist__)
 	if (errout_nfdebug)
 	{
 		nf_debugvprintf(format, args);
 		nf_debug("\n");
 	}
+#endif
 }
 
 /* ---------------------------------------------------------------------- */
@@ -286,6 +291,20 @@ void strbslash(char *str)
 
 /* ---------------------------------------------------------------------- */
 
+void strfslash(char *str)
+{
+	if (str == NULL)
+		return;
+	while (*str)
+	{
+		if (*str == bslash)
+			*str = fslash;
+		str++;
+	}
+}
+
+/* ---------------------------------------------------------------------- */
+
 char *build_path(const char *dir, const char *fname)
 {
 	size_t dirlen;
@@ -296,7 +315,11 @@ char *build_path(const char *dir, const char *fname)
 	{
 		name = g_strdup(fname);
 		if (name)
+#if defined(__TOS__) || defined(__atarist__)
 			strbslash(name);
+#else
+			strfslash(name);
+#endif
 		return name;
 	}
 	dirlen = strlen(dir);
@@ -309,7 +332,11 @@ char *build_path(const char *dir, const char *fname)
 			strcat(name, "/");
 		if (fname)
 			strcat(name, fname);
+#if defined(__TOS__) || defined(__atarist__)
 		strbslash(name);
+#else
+		strfslash(name);
+#endif
 	}
 	return name;
 }
@@ -336,6 +363,7 @@ char *change_suffix(const char *filename, const char *ext)
 
 bool file_exists(const char *f)
 {
+#if defined(__TOS__) || defined(__atarist__)
 	DTA dta;
 	DTA *olddta;
 	int ret;
@@ -345,6 +373,10 @@ bool file_exists(const char *f)
 	ret = Fsfirst(f, FA_RDONLY);
 	Fsetdta(olddta);
 	return ret == 0;
+#else
+	struct stat st;
+	return stat(f, &st) == 0;
+#endif
 }
 
 /* ---------------------------------------------------------------------- */
@@ -369,6 +401,7 @@ char *dirname(const char *f)
 
 int ch_dir(const char *path)
 {
+#if defined(__TOS__) || defined(__atarist__)
 	int r = 0;
 	int drv;
 	char *tmp;
@@ -382,7 +415,7 @@ int ch_dir(const char *path)
 	else
 		drv = -1;
 	if (drv >= 0 && path[1] == ':' &&
-		(path[2] == '/' || path[2] == '\\' || path[2] == '\0'))
+		(path[2] == fslash || path[2] == bslash || path[2] == '\0'))
 	{
 		Dsetdrv(drv);
 		path += 2;
@@ -401,4 +434,7 @@ int ch_dir(const char *path)
 		}
 	}
 	return r;
+#else
+	return chdir(path);
+#endif
 }

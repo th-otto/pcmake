@@ -11,8 +11,14 @@
 #else
 #include <tos.h>
 #endif
-#endif
 #include <mint/arch/nf_ops.h>
+#define STRBSLASH(s) s
+#else
+#include <unistd.h>
+#include <sys/stat.h>
+#include <utime.h>
+#define STRBSLASH(s) strbslash(s)
+#endif
 #include "pcmake.h"
 #  ifndef CLK_TCK
 #   define CLK_TCK	CLOCKS_PER_SEC
@@ -133,6 +139,7 @@ static char *parse_filename(char **ln)
 char *get_cwd(void)
 {
 	char path[1024];
+#if defined(__TOS__) || defined(__atarist__)
 	int drv;
 	int r;
 	
@@ -147,6 +154,10 @@ char *get_cwd(void)
 	}
 	if (r < 0)
 		return NULL;
+#else
+	if (getcwd(path, sizeof(path)) == NULL)
+		return NULL;
+#endif
 	return g_strdup(path);
 }
 
@@ -156,7 +167,11 @@ static char *dup_filename(const char *name)
 {
 	char *str = g_strdup(name);
 	if (str)
+#if defined(__TOS__) || defined(__atarist__)
 		strbslash(str);
+#else
+		strfslash(str);
+#endif
 	return str;
 }
 
@@ -344,18 +359,6 @@ void free_project(PRJ *prj)
 }
 
 
-static bool older(const DOSTIME *t1, const DOSTIME *t2)
-{
-	if (t1->date < t2->date)
-		return true;
-	if (t1->date > t2->date)
-		return false;
-	if (t1->time < t2->time)
-		return true;
-	return false;
-}
-
-
 static char *objname_for_src(PRJ *prj, filearg *ft)
 {
 	char *objname;
@@ -380,33 +383,67 @@ static char *objname_for_src(PRJ *prj, filearg *ft)
 	} else
 	{
 		objname = change_suffix(ft->name, suff_o);
+#if defined(__TOS__) || defined(__atarist__)
 		strbslash(objname);
+#else
+		strbslash(objname);
+#endif
 	}
 	return objname;
 }
 
 
+#if defined(__TOS__) || defined(__atarist__)
 static time_t mktimet(const DOSTIME *t)
 {
 	return (((unsigned long)t->date) << 16) | ((unsigned long)t->time);
 }
+#endif
 
 
 static time_t currdate(void)
 {
+#if defined(__TOS__) || defined(__atarist__)
 	DOSTIME t;
 	
 	t.time = Tgettime();
 	t.date = Tgetdate();
 	return mktimet(&t);
+#else
+	return time(0);
+#endif
 }
 
 
+static int stattime(const char *filename, time_t *t)
+{
+#if defined(__TOS__) || defined(__atarist__)
+	DOSTIME timestamp;
+	int fh;
+
+	fh = (int)Fopen(filename, FO_READ);
+	if (fh <= 0)
+		return -1;
+	Fdatime(&timestamp, fh, 0);
+	*t = mktimet(&timestamp);
+	Fclose(fh);
+	return 0;
+#else
+	struct stat st;
+	
+	if (stat(filename, &st) != 0)
+		return -1;
+	*t = st.st_mtime;
+	return 0;
+#endif
+}
+
 static void touch(PRJ *prj, filearg *ft)
 {
+#if defined(__TOS__) || defined(__atarist__)
+	char *name;
 	int h;
 	DOSTIME t;
-	char *name;
 	
 	name = dup_filename(ft->name);
 	if ((h = (int)Fopen(name, FO_READ)) >= 0)
@@ -428,13 +465,32 @@ static void touch(PRJ *prj, filearg *ft)
 		g_free(o);
 	}
 	g_free(name);
+#else
+	char *name;
+	struct utimbuf t;
+	
+	name = dup_filename(ft->name);
+	if (stattime(name, &ft->src_time) == 0)
+	{
+		char *o;
+
+		o = objname_for_src(prj, ft);
+		t.actime = 0;
+		t.modtime = 0;
+		if (utime(o, &t) == 0)
+		{
+			ft->obj_time = t.modtime;
+		}
+		g_free(o);
+	}
+	g_free(name);
+#endif
 }
 
 
 static int makeok(PRJ *prj, MAKEOPTS *opts, filearg *ft, const char *objname, int lvl)
 {
-	int fh;
-	DOSTIME obj_timestamp, src_timestamp;
+	time_t src_time;
 	strlist *dep;
 	char *f;
 	char *srcname;
@@ -442,32 +498,23 @@ static int makeok(PRJ *prj, MAKEOPTS *opts, filearg *ft, const char *objname, in
 	(void)(prj);
 	if (ft->obj_time == 0)
 	{
-		fh = (int)Fopen(objname, FO_READ);
-		if (fh <= 0)
+		if (stattime(objname, &ft->obj_time) != 0)
 		{
 			if (opts->verbose > 1)
 				fprintf(stdout, _("compiling %s because %s is missing\n"), ft->name, objname);
 			ft->obj_time = 0;
 			return 1;						/* .o absent, must compile */
 		}
-		Fdatime(&obj_timestamp, fh, 0);				/* object (target) */
-		ft->obj_time = mktimet(&obj_timestamp);
-		Fclose(fh);
 	}
 
 	srcname = dup_filename(ft->name);
-	fh = (int)Fopen(srcname, FO_READ);
-	if (fh <= 0)
+	if (stattime(srcname, &ft->src_time) != 0)
 	{
 		errout(_("%d>%s: Can't open %s"), lvl, program_name, srcname);
 		g_free(srcname);
 		return -1;
 	}
 
-	Fdatime(&src_timestamp, fh, 0);
-	ft->src_time = mktimet(&src_timestamp);
-	Fclose(fh);
-	
 	if (ft->src_time < ft->obj_time)
 	{
 		g_free(srcname);
@@ -475,16 +522,13 @@ static int makeok(PRJ *prj, MAKEOPTS *opts, filearg *ft, const char *objname, in
 		for (dep = ft->dependencies; dep; dep = dep->next)
 		{
 			f = dup_filename(dep->str);
-			fh = (int)Fopen(f, FO_READ);
-			if (fh <= 0)
+			if (stattime(f, &src_time) != 0)
 			{
 				errout(_("%d>%s: Can't open %s"), lvl, program_name, f);
 				g_free(f);
 				return -1;
 			}
-			Fdatime(&src_timestamp, fh, 0);
-			Fclose(fh);
-			if (older(&obj_timestamp, &src_timestamp))
+			if (ft->obj_time < src_time)
 			{
 				if (opts->verbose > 1)
 					fprintf(stdout, _("compiling %s because %s is newer than %s\n"), ft->name, f, objname);
@@ -514,15 +558,23 @@ static void add_arg(int *argc, char ***argv, const char *arg)
 }
 
 
-static void add_optarg(int *argc, char ***argv, const char *sw, const char *arg)
+static char *add_optarg(int *argc, char ***argv, const char *sw, const char *arg)
 {
 	char *str = g_new(char, strlen(sw) + strlen(arg) + 1);
 	if (str)
 	{
 		strcat(strcpy(str, sw), arg);
-		add_arg(argc, argv, str);
-		g_free(str);
+		*argv = g_realloc(*argv, (*argc + 2) * sizeof(char *));
+		if (*argv == NULL)
+		{
+			g_free(str);
+			return NULL;
+		}
+		(*argv)[*argc] = str;
+		++(*argc);
+		(*argv)[*argc] = NULL;
 	}
+	return str;
 }
 
 
@@ -543,7 +595,7 @@ static void prj_cparams(const C_FLAGS *cflags, int *argc, char ***argv)
 
 	for (str = cflags->c_includes; str != NULL; str = str->next)
 	{
-		add_optarg(argc, argv, "-I", str->str);
+		STRBSLASH(add_optarg(argc, argv, "-I", str->str));
 	}
 }
 
@@ -560,7 +612,7 @@ static void prj_aparams(const A_FLAGS *aflags, int *argc, char ***argv)
 
 	for (str = aflags->as_includes; str != NULL; str = str->next)
 	{
-		add_optarg(argc, argv, "-I", str->str);
+		STRBSLASH(add_optarg(argc, argv, "-I", str->str));
 	}
 }
 
@@ -568,7 +620,11 @@ static void prj_aparams(const A_FLAGS *aflags, int *argc, char ***argv)
 static void remove_output(const char *filename)
 {
 	fprintf(stdout, "rm %s\n", filename);
+#if defined(__TOS__) || defined(__atarist__)
 	Fdelete(filename);
+#else
+	unlink(filename);
+#endif
 }
 
 
@@ -744,16 +800,16 @@ static int docomp(PRJ *prj, MAKEOPTS *opts, filearg *ft)
 	
 		prj_cparams(cflags, &argc, &argv);
 
-		add_optarg(&argc, &argv, "-I", get_includedir());
+		STRBSLASH(add_optarg(&argc, &argv, "-I", get_includedir()));
 
 		output_name = objname_for_src(prj, ft);
 	}
 
-	srcname = dup_filename(ft->name);
-	
+	STRBSLASH(srcname = dup_filename(ft->name));
+
 	/* ahcc does not understand -O option */
 	if (!prj->needs_ahcc)
-		add_optarg(&argc, &argv, "-O", output_name);
+		STRBSLASH(add_optarg(&argc, &argv, "-O", output_name));
 
 	add_arg(&argc, &argv, srcname);
 	
@@ -767,6 +823,7 @@ static int docomp(PRJ *prj, MAKEOPTS *opts, filearg *ft)
 		for (i = 1; i < argc; i++)
 			fprintf(stdout, " %s", argv[i]);
 		fprintf(stdout, "\n");
+#if defined(__TOS__) || defined(__atarist__)
 		if (opts->nfdebug)
 		{
 			nf_debug(argv[0]);
@@ -777,6 +834,7 @@ static int docomp(PRJ *prj, MAKEOPTS *opts, filearg *ft)
 			}
 			nf_debug("\n");
 		}
+#endif
 	}
 	g_free(output_name);
 
@@ -925,7 +983,7 @@ static bool dold(PRJ *prj, MAKEOPTS *opts)
 		add_arg(&argc, &argv, "--symbol-list");
 	if (prj->ld_flags.load_map)
 		add_arg(&argc, &argv, "--map");
-	add_optarg(&argc, &argv, "-O=", prj->output->name);
+	STRBSLASH(add_optarg(&argc, &argv, "-O=", prj->output->name));
 		
 	if (prj->inputs)
 	{
@@ -936,12 +994,12 @@ static bool dold(PRJ *prj, MAKEOPTS *opts)
 			switch (ft->filetype)
 			{
 			case FT_CSOURCE:
-				name = objname_for_src(prj, ft);
+				STRBSLASH(name = objname_for_src(prj, ft));
 				add_arg(&argc, &argv, name);
 				g_free(name);
 				break;
 			case FT_ASSOURCE:
-				name = objname_for_src(prj, ft);
+				STRBSLASH(name = objname_for_src(prj, ft));
 				add_arg(&argc, &argv, name);
 				g_free(name);
 				break;
@@ -951,6 +1009,7 @@ static bool dold(PRJ *prj, MAKEOPTS *opts)
 					rep = 1;
 				} else
 				{
+					(void) STRBSLASH(name);
 					add_arg(&argc, &argv, name);
 				}
 				g_free(name);
@@ -961,6 +1020,7 @@ static bool dold(PRJ *prj, MAKEOPTS *opts)
 					rep = 1;
 				} else
 				{
+					(void) STRBSLASH(name);
 					add_arg(&argc, &argv, name);
 				}
 				g_free(name);
@@ -970,7 +1030,7 @@ static bool dold(PRJ *prj, MAKEOPTS *opts)
 				{
 					if (ft->u.prj->ld_flags.create_new_object || ft->u.prj->output->filetype == FT_LIBRARY)
 					{
-						name = build_path(ft->u.prj->directory, ft->u.prj->output->name);
+						STRBSLASH(name = build_path(ft->u.prj->directory, ft->u.prj->output->name));
 						add_arg(&argc, &argv, name);
 						g_free(name);
 					}
@@ -996,6 +1056,7 @@ static bool dold(PRJ *prj, MAKEOPTS *opts)
 			for (i = 1; i < argc; i++)
 				fprintf(stdout, " %s", argv[i]);
 			fprintf(stdout, "\n");
+#if defined(__TOS__) || defined(__atarist__)
 			if (opts->nfdebug)
 			{
 				nf_debug(argv[0]);
@@ -1006,6 +1067,7 @@ static bool dold(PRJ *prj, MAKEOPTS *opts)
 				}
 				nf_debug("\n");
 			}
+#endif
 		}
 		
 		if (opts->dryrun)
@@ -1063,7 +1125,6 @@ static int make_prj(PRJ *prj, MAKEOPTS *opts, int level)
 {
 	int r;
 	int anycomp;
-	int fh;
 	filearg *ft;
 	char *name;
 	char *curdir;
@@ -1132,16 +1193,14 @@ static int make_prj(PRJ *prj, MAKEOPTS *opts, int level)
 			anycomp = 1;
 		} else
 		{
-			DOSTIME prg_timestamp, src_timestamp;
+			time_t prg_time, src_time;
 			
-			if (prj->output == NULL || (fh = (int)Fopen(prj->output->name, 0)) < 0)
+			if (prj->output == NULL || stattime(prj->output->name, &prj->output->obj_time) != 0)
 			{
 				anycomp = 1;
 			} else
 			{
-				Fdatime(&prg_timestamp, fh, 0);
-				prj->output->obj_time = mktimet(&prg_timestamp);
-				Fclose(fh);
+				prg_time = prj->output->obj_time;
 				for (ft = prj->inputs; ft && r >= 0; ft = ft->next)
 				{
 					switch (ft->filetype)
@@ -1170,8 +1229,7 @@ static int make_prj(PRJ *prj, MAKEOPTS *opts, int level)
 					}
 					if (r >= 0)
 					{
-						fh = (int)Fopen(name, FO_READ);
-						if (fh <= 0)
+						if (stattime(name, &src_time) != 0)
 						{
 							if (opts->dryrun && (ft->filetype == FT_CSOURCE || ft->filetype == FT_ASSOURCE) && ft->obj_time != 0)
 							{
@@ -1183,11 +1241,9 @@ static int make_prj(PRJ *prj, MAKEOPTS *opts, int level)
 							}
 						} else
 						{
-							g_free(name);
-							Fdatime(&src_timestamp, fh, 0);
-							Fclose(fh);
-							ft->src_time = mktimet(&src_timestamp);
-							if (older(&prg_timestamp, &src_timestamp))
+							ft->src_time = src_time;
+							
+							if (prg_time < src_time)
 							{
 								if (prj->output->filetype != FT_PROJECT)
 									anycomp = 1;

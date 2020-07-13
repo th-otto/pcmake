@@ -7,7 +7,13 @@ WARNINGS = -Wall -Wextra -Wstrict-prototypes -Wmissing-prototypes
 CFLAGS = -Os -fomit-frame-pointer $(WARNINGS)
 LDFLAGS = -s
 
-all: pcmake.ttp
+ifeq ($(CROSS_PREFIX),)
+EXE_EXT=
+else
+EXE_EXT=.ttp
+endif
+
+all: pcmake$(EXE_EXT)
 
 
 OBJS = \
@@ -22,8 +28,10 @@ OBJS = \
 	getopt.o \
 	$(empty)
 
-pcmake.ttp: $(OBJS)
+pcmake$(EXE_EXT): $(OBJS)
 	$(LD) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJS)
 
+$(OBJS): pcmake.h memdebug.h list.h getopt.h warnings.h
+
 clean::
-	rm -f *.o *.pdb *.ttp
+	rm -f *.o *.pdb pcmake *.ttp
