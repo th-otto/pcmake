@@ -552,6 +552,16 @@ static void print_usage(C_FLAGS *flg, bool to_stderr)
 }
 
 
+static unsigned long hexval(const char *s)
+{
+	if (*s == '=')
+		s++;
+	if (*s == '$')
+		return strtoul(s + 1, NULL, 16);
+	return strtoul(s, NULL, 0);
+}
+
+
 static bool parse_cflags(int argc, const char **argv, C_FLAGS *flg, int *poptind)
 {
 	struct _getopt_data *opts;
@@ -618,12 +628,12 @@ static bool parse_cflags(int argc, const char **argv, C_FLAGS *flg, int *poptind
 			break;
 		case 'e':						/* no of errors */
 		case 'E':
-			flg->max_errors = strtol(xgetopt_arg_r(opts), NULL, 0);
+			flg->max_errors = hexval(xgetopt_arg_r(opts));
 			break;
 		case 'f':						/* no of warnings */
 		case 'F':
 			/* MAYBE TODO: conflicts with assembler option: no false condition listing */
-			flg->max_warnings = strtol(xgetopt_arg_r(opts), NULL, 0);
+			flg->max_warnings = hexval(xgetopt_arg_r(opts));
 			break;
 		case 'i':
 		case 'I':
@@ -634,7 +644,7 @@ static bool parse_cflags(int argc, const char **argv, C_FLAGS *flg, int *poptind
 			break;
 		case 'l':
 		case 'L':
-			flg->identifier_max_length = strtol(xgetopt_arg_r(opts), NULL, 0);
+			flg->identifier_max_length = hexval(xgetopt_arg_r(opts));
 			if (flg->identifier_max_length < 0)
 				flg->identifier_max_length = DEFAULT_IDLENGTH;
 			else if (flg->identifier_max_length > MAX_IDLENGTH)

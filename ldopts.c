@@ -145,6 +145,8 @@ void free_ldflags(LD_FLAGS *flg)
 
 static unsigned long hexval(const char *s)
 {
+	if (*s == '=')
+		s++;
 	if (*s == '$')
 		return strtoul(s + 1, NULL, 16);
 	return strtoul(s, NULL, 0);
@@ -160,7 +162,7 @@ static bool parse_ldflags(int argc, const char **argv, LD_FLAGS *flg, int *popti
 	
 	getopt_init_r(program_name, &opts);
 	getopt_seterrprint_r(opts, errout);
-	while ((c = getopt_long_only_r(argc, argv, "b:B:c:C:d:D:gGi:I:jJlLmMnNo:pPrRs:S:t:T:vVyY-+", long_options, NULL, opts)) != EOF)
+	while ((c = getopt_long_only_r(argc, argv, "b:B:c:C:d:D:gGh:H:i:I:jJlLmMnNo:pPrRs:S:t:T:vVyY-+", long_options, NULL, opts)) != EOF)
 	{
 		if (c == '-')
 			set_ldflag(flg, &lastflag, false);
