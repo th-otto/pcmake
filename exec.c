@@ -58,9 +58,9 @@ void set_pcdir(const char *argv0)
 			*t = '\0';
 			t = strrslash(pc_dir);
 		}
+		pc_bindir = g_strdup(pc_dir);
 		if (t && stricmp(t + 1, "bin") == 0)
 		{
-			pc_bindir = g_strdup(pc_dir);
 			*t = '\0';
 		}
 	}
