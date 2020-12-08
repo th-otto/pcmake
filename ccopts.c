@@ -450,20 +450,22 @@ static bool parse_c_warning_or_level(const char *arg, C_FLAGS *flg)
 	int val;
 	size_t i;
 	bool on;
-	
-	/* TODO: enable warnings */
-	val = (int)strtol(arg, &end, 10);
-	if (*end == '\0')
-	{
-		if (val < 0 || val > MAX_WARNINGLEVEL)
+
+	if (*arg >= '0' && *arg <= '9')
+	{	
+		val = (int)strtol(arg, &end, 10);
+		if (*end == '\0')
 		{
-			errout(_("invalid argument: %s"), arg);
-			return false;
+			if (val < 0 || val > MAX_WARNINGLEVEL)
+			{
+				errout(_("invalid argument: %s"), arg);
+				return false;
+			}
+			flg->warning_level = val;
+			return true;
 		}
-		flg->warning_level = val;
-		return true;
 	}
-	
+
 	on = true;
 	if (*arg == '-')
 	{
