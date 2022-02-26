@@ -5,6 +5,8 @@
 #include "getopt.h"
 #include "pcmake.h"
 
+#define OPT_BINARY 256
+
 static struct option const long_options[] = {
 	{ "global-symbols", no_argument, NULL, 'G' },
 	{ "new-object", no_argument, NULL, 'J' },
@@ -23,6 +25,7 @@ static struct option const long_options[] = {
 	{ "imagesize", required_argument, NULL, 'I' },
 	{ "verbose", no_argument, NULL, 'V' },
 	{ "debug", no_argument, NULL, 'Y' },
+	{ "binary", no_argument, NULL, OPT_BINARY },
 	{ NULL, no_argument, NULL, 0 }
 };
 
@@ -131,6 +134,7 @@ void init_ldflags(LD_FLAGS *flg)
 	flg->data_start = 0;
 	flg->bss_start = 0;
 	flg->imgsize = 0;
+	flg->binary = false;
 	flg->stacksize = DEFAULT_STACKSIZE;
 	flg->output_filename = NULL;
 }
@@ -221,6 +225,10 @@ static bool parse_ldflags(int argc, const char **argv, LD_FLAGS *flg, int *popti
 		case 'v':						/* verbose */
 		case 'V':
 			flg->verbose++;
+			break;
+
+		case OPT_BINARY:
+			flg->binary = true;
 			break;
 
 		case '-':

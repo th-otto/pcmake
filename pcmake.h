@@ -106,6 +106,7 @@ typedef struct
 	long text_start;
 	long data_start;
 	long bss_start;
+	bool binary;				/* omit executable header */
 	long imgsize;
 	char *output_filename;
 	long stacksize;

@@ -940,6 +940,8 @@ static bool dold(PRJ *prj, MAKEOPTS *opts)
 		add_arg(&argc, &argv, "-F");
 	if (prj->ld_flags.program_to_stram)
 		add_arg(&argc, &argv, "-R");
+	if (prj->ld_flags.binary)
+		add_arg(&argc, &argv, "-binary");
 	if (prj->ld_flags.create_new_object || prj->output->filetype == FT_LIBRARY)
 	{
 		if (prj->ld_flags.heap_size > 0 ||
