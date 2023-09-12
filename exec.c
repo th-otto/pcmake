@@ -33,13 +33,64 @@ static char *assembler_executable;
 static char *ahcc_executable;
 static char *ahcl_executable;
 
-#define PATH_SEPTOK ";,"
-
 extern char **environ;
 
 /**************************************************************************/
 /* ---------------------------------------------------------------------- */
 /**************************************************************************/
+
+/*
+ * return next element of PATH.
+ * Similar to strtok(s, ";,:"), but handle ':'
+ * specially when it delimits a single drive letter only
+ */
+static char *pathtok(char *s, char **scanpoint)
+{
+	char *scan;
+	char *tok;
+
+	if (s == NULL && *scanpoint == NULL)
+		return NULL;
+	if (s != NULL)
+		scan = s;
+	else
+		scan = *scanpoint;
+
+	/*
+	 * Skip leading delimiters.
+	 */
+	while (*scan == ';' || *scan == ',' || *scan == ':')
+		scan++;
+
+	if (*scan == '\0') 
+	{
+		*scanpoint = NULL;
+		return NULL;
+	}
+
+	tok = scan;
+
+	/*
+	 * Scan token.
+	 */
+	for (; *scan != '\0'; scan++) 
+	{
+		if (*scan == ';' || *scan == ',' || (*scan == ':' && scan > tok + 1))
+		{
+			*scanpoint = scan + 1;
+			*scan = '\0';
+			return tok;
+		}
+	}
+
+	/*
+	 * Reached end of string.
+	 */
+	*scanpoint = NULL;
+	return tok;
+}
+
+/* ---------------------------------------------------------------------- */
 
 void set_pcdir(const char *argv0)
 {
@@ -52,6 +103,36 @@ void set_pcdir(const char *argv0)
 		char *t;
 		
 		pc_dir = dirname(argv0);
+		if (*pc_dir == '\0')
+		{
+			/*
+			 * toswin2/bash might give us only the name, not the path.
+			 */
+			char *scanpoint = NULL;
+			char *pathbuf;
+			char *p;
+			char *file;
+
+			pathbuf = g_strdup(getenv("PATH"));
+			if (pathbuf != NULL)
+			{
+				for (p = pathtok(pathbuf, &scanpoint); p != NULL; p = pathtok(NULL, &scanpoint))
+				{
+					file = build_path(p, argv0);
+					if (file != NULL)
+					{
+						if (file_exists(file))
+						{
+							g_free(pc_dir);
+							pc_dir = build_path(p, NULL);
+							break;
+						}
+						g_free(file);
+					}
+				}
+				g_free(pathbuf);
+			}
+		}
 		t = strrslash(pc_dir);
 		if (t && t[1] == '\0')
 		{
@@ -59,6 +140,7 @@ void set_pcdir(const char *argv0)
 			t = strrslash(pc_dir);
 		}
 		pc_bindir = g_strdup(pc_dir);
+		strbslash(pc_bindir);
 		if (t && stricmp(t + 1, "bin") == 0)
 		{
 			*t = '\0';
@@ -209,6 +291,7 @@ static char *findcmd(const char *cmd)
 	char *baseptr;
 	int hassuf;
 	int i;
+	char *scanpoint = NULL;
 	static const char *const suf[] =
 	{
 		"",
@@ -246,7 +329,7 @@ static char *findcmd(const char *cmd)
 	if (pathbuf == NULL)
 		return g_strdup(cmd);
 	
-	for (p = strtok(pathbuf, PATH_SEPTOK); p != NULL; p = strtok(NULL, PATH_SEPTOK))
+	for (p = pathtok(pathbuf, &scanpoint); p != NULL; p = pathtok(NULL, &scanpoint))
 	{
 		if (hassuf)
 		{
