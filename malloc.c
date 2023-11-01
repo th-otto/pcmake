@@ -23,9 +23,6 @@
 #include <unistd.h>
 #include <tos.h>
 #include <errno.h>
-#include <mint/arch/nf_ops.h>
-#include <mint/sysvars.h>
-#include <mint/ssystem.h>
 
 #ifndef FALSE
 #  define FALSE 0
