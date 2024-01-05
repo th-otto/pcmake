@@ -4,7 +4,8 @@ CC = $(CROSS_PREFIX)gcc
 AS = $(CROSS_PREFIX)gcc
 LD = $(CC)
 WARNINGS = -Wall -Wextra -Wstrict-prototypes -Wmissing-prototypes
-CFLAGS = -Os -fomit-frame-pointer $(WARNINGS)
+# Use -DDISABLE_NATFEATS=1 to disable NATFEATS at compile time.
+CFLAGS = -Os -fomit-frame-pointer $(WARNINGS) # -DDISABLE_NATFEATS=1
 LDFLAGS = -s
 
 ifeq ($(CROSS_PREFIX),)
