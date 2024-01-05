@@ -11,7 +11,6 @@
 #else
 #include <tos.h>
 #endif
-#include <mint/arch/nf_ops.h>
 #endif
 #include "getopt.h"
 #include "pcmake.h"

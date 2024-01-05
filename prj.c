@@ -11,7 +11,9 @@
 #else
 #include <tos.h>
 #endif
+#ifndef DISABLE_NATFEATS
 #include <mint/arch/nf_ops.h>
+#endif
 #define STRBSLASH(s) s
 #else
 #include <unistd.h>
@@ -824,6 +826,7 @@ static int docomp(PRJ *prj, MAKEOPTS *opts, filearg *ft)
 			fprintf(stdout, " %s", argv[i]);
 		fprintf(stdout, "\n");
 #if defined(__TOS__) || defined(__atarist__)
+#ifndef DISABLE_NATFEATS
 		if (opts->nfdebug)
 		{
 			nf_debug(argv[0]);
@@ -834,6 +837,7 @@ static int docomp(PRJ *prj, MAKEOPTS *opts, filearg *ft)
 			}
 			nf_debug("\n");
 		}
+#endif
 #endif
 	}
 	g_free(output_name);
@@ -1059,6 +1063,7 @@ static bool dold(PRJ *prj, MAKEOPTS *opts)
 				fprintf(stdout, " %s", argv[i]);
 			fprintf(stdout, "\n");
 #if defined(__TOS__) || defined(__atarist__)
+#ifndef DISABLE_NATFEATS
 			if (opts->nfdebug)
 			{
 				nf_debug(argv[0]);
@@ -1069,6 +1074,7 @@ static bool dold(PRJ *prj, MAKEOPTS *opts)
 				}
 				nf_debug("\n");
 			}
+#endif
 #endif
 		}
 		

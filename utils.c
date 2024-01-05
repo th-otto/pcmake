@@ -9,7 +9,9 @@
 #else
 #include <tos.h>
 #endif
+#ifndef DISABLE_NATFEATS
 #include <mint/arch/nf_ops.h>
+#endif
 #else
 #include <sys/stat.h>
 #include <unistd.h>
@@ -33,11 +35,13 @@ void errout_va(const char *format, va_list args)
 	vfprintf(stderr, format, args);
 	fputc('\n', stderr);
 #if defined(__TOS__) || defined(__atarist__)
+#ifndef DISABLE_NATFEATS
 	if (errout_nfdebug)
 	{
 		nf_debugvprintf(format, args);
 		nf_debug("\n");
 	}
+#endif
 #endif
 }
 
