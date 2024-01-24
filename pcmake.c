@@ -11,6 +11,8 @@
 #else
 #include <tos.h>
 #endif
+#else
+#include <dirent.h>
 #endif
 #include "getopt.h"
 #include "pcmake.h"
@@ -85,7 +87,7 @@ static void print_usage(bool to_stderr)
 	FILE *fp;
 	
 	fp = to_stderr ? stderr : stdout;
-	fprintf(fp, _("usage: %s [options] <project-file>\n"), program_name);
+	fprintf(fp, _("usage: %s [options] [<project-file>]\n"), program_name);
 	fprintf(fp, _("options:\n"));
 	fprintf(fp, _("  -B, --always-make        Unconditionally make all targets.\n"));
 	fprintf(fp, _("  -C, --directory=DIR      Change to DIRECTORY before doing anything.\n"));
@@ -100,6 +102,9 @@ static void print_usage(bool to_stderr)
 	fprintf(fp, _("      --no-print-directory Turn off -w, even if it was turned on implicitly.\n"));
 	fprintf(fp, _("  -V, --version            Print the version number and exit.\n"));
 	fprintf(fp, _("  -h, --help               Display this help and exit.\n"));
+	fprintf(fp, "\n");
+	fprintf(fp, _("If no project file is given, the first *.prj file in\n"
+	              "the current directory will be used\n"));
 }
 
 
@@ -120,6 +125,7 @@ int main(int argc, const char **argv)
 	int err = EXIT_SUCCESS;
 	PRJ *prj = NULL;
 	const char *prj_name;
+	char *prj_name_copy = NULL;
 	
 #if defined(__TOS__) || defined(__atarist__)
 	static DTA dta;
@@ -228,27 +234,79 @@ int main(int argc, const char **argv)
 	} else if (show_help)
 	{
 		print_usage(false);
-	} else if (prj_name == NULL && argc != 1)
-	{
-		print_usage(true);
-		err = EXIT_FAILURE;
 	} else
 	{
 		errout_nfdebug = makeopts.nfdebug;
 
-		if (prj_name == NULL)
-			prj_name = argv[0];
-		
-		if (makeopts.directory)
+		if (err == EXIT_SUCCESS)
 		{
-			char *dir = build_path(makeopts.directory, NULL);
-			if (ch_dir(dir) < 0)
+			if (makeopts.directory)
 			{
-				errout(_("%s: cannot chdir to %s"), program_name, dir);
+				char *dir = build_path(makeopts.directory, NULL);
+				if (ch_dir(dir) < 0)
+				{
+					errout(_("%s: cannot chdir to %s"), program_name, dir);
+					err = EXIT_FAILURE;
+				}
+				g_free(dir);
+			}
+		}
+
+		if (prj_name == NULL)
+		{
+			if (argc == 1)
+			{
+				prj_name = argv[0];
+			} else if (argc == 0)
+			{
+#if defined(__TOS__) || defined(__atarist__)
+				if (Fsfirst("*.prj", FA_RDONLY) == 0)
+				{
+					prj_name_copy = g_strdup(dta.dta_name);
+					while (Fsnext() == 0)
+					{
+						errout(_("%s: more than one project file found"), program_name);
+						err = EXIT_FAILURE;
+					}
+				}
+#else
+				DIR *dir;
+				struct dirent *entry;
+				
+				dir = opendir(".");
+				if (dir != NULL)
+				{
+					while ((entry = readdir(dir)) != NULL)
+					{
+						size_t len = strlen(entry->d_name);
+						if (len > 4 && stricmp(entry->d_name + len - 4, ".prj") == 0)
+						{
+							if (prj_name_copy != NULL)
+							{
+								errout(_("%s: more than one project file found"), program_name);
+								err = EXIT_FAILURE;
+							} else
+							{
+								prj_name_copy = g_strdup(entry->d_name);
+							}
+						}
+					}
+					closedir(dir);
+				}
+#endif
+				if (prj_name_copy == NULL)
+				{
+					errout(_("%s: no project file found"), program_name);
+					err = EXIT_FAILURE;
+				}
+				prj_name = prj_name_copy;
+			} else
+			{
+				print_usage(true);
 				err = EXIT_FAILURE;
 			}
-			g_free(dir);
 		}
+
 		if (err == EXIT_SUCCESS)
 		{
 			char *dir = get_cwd();
@@ -267,6 +325,7 @@ int main(int argc, const char **argv)
 				err = EXIT_FAILURE;
 			free_project(prj);
 		}
+		g_free(prj_name_copy);
 	}
 
 	exec_exit();
